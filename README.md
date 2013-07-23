@@ -5,25 +5,43 @@ A simulator targeted at modular models. This is of special interest with huge mo
 
 Another goal of the MOI Simulator is to define systems in easy ways and to allow the different modules to be described using different languages and modelling techniques. 
 
-# Requirements
+The project is split in four sub-projects.
+
+### Core
+Contains all the core parts of the simulator, i.e. different strategies to simulate models, the DSL to specify models and so on.
+
+### Macros
+An own project to allow scala macros (it is it's own project as this needs to be compiled before the core project). This allows for some compile-time optimizations.
+
+### Web Interface
+A long-term goal of the simulator is to provide a platform where modelers can plug and play with different models and run and test them. The web interface is the first step towards this platform. As for now it gives an overview of available simulations, lets a user select different parts to be simulated and variables to be displayed and to run simulations.
+
+### Knowledge Base
+The knowledge base gives models a possibility to hook into databases to retreive constants and other information. At the moment this is available for the WholeCellKb developed by the Covert group at Stanford. The database needs to be installed locally. See http://wholecellkb.stanford.edu/ for more instructions and information. 
+
+## Requirements
 The following things are needed to run the simulator:
 * sbt 0.11.2+ (http://www.scala-sbt.org/)
 * Plotting requires gnuplot installed and on your path
 
-# Installation and First Steps
+## Installation and First Steps
 Clone the repository into a folder of your choice, open a command line terminal there and type:
-    sbt
+```
+sbt
+```
 Sbt will download all the dependencies. Check if everything runs by running some tests:
-    test
-    test:run
-This will compile the code and (1) run unit tests (2) allow you to select a model to run. Recommended simulation engine is the storm simulator (as development focuses on that for now). Select an example model from ed.mois.test.storm.
+```
+test
+test:run
+```
+This will compile the code and (1) run unit tests (2) allow you to select a model to run. Recommended simulation engine is the storm simulator (as development focuses on that for now). Select an example model from `ed.mois.test.storm`.
 
-# Developing Your own Model
-Easiest to get your own model started is to copy and modify one of the example models, e.g. ed.mois.test.storm.bollenbach._
+## Developing Your own Model
+Easiest to get your own model started is to copy and modify one of the example models, e.g. `ed.mois.test.storm.bollenbach._`
 
 Copy all the files (in the example this is only one, but you're not required to keep everything in one file) and modify some things. 
 
-# Warnings
+## Warnings
 As of this commit, the web interface isn't working (still relying on some old stuff).
 
 Tested on Windows 8 64 Bit. No warranties for other platforms. 
