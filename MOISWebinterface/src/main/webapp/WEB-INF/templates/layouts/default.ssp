@@ -1,0 +1,92 @@
+<%@ val body:String %>
+<%@ val simulators:List[ed.mois.changemodel.simulator.SimulationDescriptor] %>
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Integrated Module Simulator Control</title>
+    <!-- Bootstrap -->
+    <link href="css/bootstrap.min.css" rel="stylesheet" media="screen">
+    <style type="text/css">
+		body {
+			margin-top:60px;
+		}
+			.plotFill {
+			display: block;
+			position: absolute;
+			height:auto;
+			bottom:0;
+			top:0;
+			left:0;
+			right:0;
+			margin-top:40px;
+		}
+		#hugeGraph svg {
+			//position: absolute !important;
+		}
+		.pin {
+			width: auto;
+			padding: 0 15px 15px;
+			margin-bottom: 25px;
+			background-color: #fff;
+			box-shadow: 0 1px 3px rgba(34,25,25,0.4);
+			-moz-box-shadow: 0 1px 2px rgba(34,25,25,0.4);
+			-webkit-box-shadow: 0 1px 3px rgba(34,25,25,0.4);
+		}
+		.convo {
+			margin: 0 -15px 10px;
+			padding: 10px 15px 5px;
+			background-color: #F5F5F5;
+		}
+    </style>    
+  </head>
+  <body>
+    <div class="navbar navbar-fixed-top active">
+		<div class="navbar-inner">
+			<div class="container" style="margin-left: 20px; margin-right: 20px; width: auto;">
+				<a class="brand" href="#">Integrated Module Simulator Control Panel</a>
+				<div class="nav-collapse">
+				<a class="btn btn-warning pull-right disabled" id="runSim">Run Simulation</a>
+				<ul class="nav pull-right">
+					<li class="dropdown">
+						<a href="#" class="dropdown-toggle" data-toggle="dropdown">
+							<i id="simOk" class="icon-ok" style="margin-right: 5px; display: none;"></i>Simulations
+							<b class="caret"></b>
+						</a>
+						<ul class="dropdown-menu" role="menu">
+							#for (s <- simulators)
+								<li><a href="#" onclick="loadSim('${s.title}');return false;">${s.title}</a></li>
+							#end
+						</ul>
+					</li>
+				</ul>
+				<div id="progBar" class="progress progress-striped active pull-right" style="width: 200px; margin: 10px 10px; display: none;">
+					<div class="bar" style="width: 60%;"></div>
+				</div>
+				</div>
+			</div>
+		</div>
+    </div>
+    
+	<div class="container-fluid">
+		<div class="row-fluid">
+	    	<div id="errorAlert" class="alert alert-error" style="display: none;">
+	    		<button type="button" class="close">&times;</button>
+				<strong>Error!</strong> <p id="errorMsg" style="margin: 0;"></p>
+   			</div>
+			<div class="CMContent">
+				<%= unescape(body) %>
+    		</div>
+    	</div>
+	</div>
+
+    <script src="js/jquery-2.0.0.min.js"></script>
+    <script src="js/raphael-min.js"></script>
+    <script src="js/bootstrap.min.js"></script>
+    <script src="js/jquery-atmosphere.js"></script>
+    <script src="js/excanvas.min.js"></script>
+    <script src="js/jquery.flot.min.js"></script>
+    <script src="js/hugegraph.js"></script>
+    <script src="js/application.js"></script>
+    <script src="js/curvedLines.js"></script>
+  </body>
+</html>
