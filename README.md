@@ -21,7 +21,8 @@ The knowledge base gives models a possibility to hook into databases to retreive
 
 ## Requirements
 The following things are needed to run the simulator:
-* sbt 0.11.2+ (http://www.scala-sbt.org/)
+* A Java installation (think 1.7+ should be fine, probably also 1.6+)
+* Sbt 0.11.2+ (http://www.scala-sbt.org/)
 * Plotting requires gnuplot installed and on your path
 
 ## Installation and First Steps
