@@ -38,9 +38,17 @@ test:run
 This will compile the code and (1) run unit tests (2) allow you to select a model to run. Recommended simulation engine is the storm simulator (as development focuses on that for now). Select an example model from `ed.mois.test.storm`.
 
 ## Developing Your own Model
-Easiest to get your own model started is to copy and modify one of the example models, e.g. `ed.mois.test.storm.bollenbach._`
+Easiest to get your own model started is to copy and modify one of the example models, e.g. `ed.mois.test.storm.bollenbach._`. I HEAVILY recommend using the storm simulator, as this is the one currently being developed (the others (sim, tiny) will vanish within the next weeks). Copy all the files (in the Bollenbach example there is only one, but you're not required to keep everything in one file) and modify some things. Run as above with:
+```
+test:run
+```
 
-Copy all the files (in the example this is only one, but you're not required to keep everything in one file) and modify some things. 
+For a real model (that is independent of this repository), create a new project depending on the simulator. Easiest is probably the compilation and packaging of the MOI Simulator via (in sbt):
+```
+package
+```
+This yields a moiscore_2.10-1.0.0.jar file in MOISCore\target\scala-2.10 which can be used as a library in any project. Haven't tested this yet, but sould work :).
+
 
 ## Warnings
 As of this commit, the web interface isn't working (still relying on some old stuff).
