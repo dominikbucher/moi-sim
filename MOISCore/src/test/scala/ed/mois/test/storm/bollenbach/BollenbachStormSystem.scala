@@ -49,8 +49,9 @@ class BollenbachModel(iSr: Double) extends StormModel {
   import Functions._
 
   lazy val stateVector = BollenbachState()
-  lazy val processes: Array[() => StormProcess[BollenbachState]] = Array(
-    () => new Metabolism)
+  ++(() => new Metabolism)
+  // lazy val processes: Array[() => StormProcess[BollenbachState]] = Array(
+  //   () => new Metabolism)
 
   val title = "Bollenbach Ribosome Inhibitor Model"
   val desc = "The model used in the paper 'Nonoptimal Microbial Response to Antibiotics Underlies Suppressive Drug Interactions."

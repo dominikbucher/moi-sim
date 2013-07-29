@@ -14,8 +14,10 @@ package ed.mois.core.storm
  * @param fields Reference to map where this fields value will be added.
  * @param fieldPtrs Reference to map where this field will be added.
  */
- class StormField[T](init: T, val id: Int,
-  val fields: collection.mutable.Map[Int, Any], val fieldPtrs: collection.mutable.Map[Int, StormField[_]]) {
+ class StormField[T](state: StormState[_],
+  init: T, val id: Int,
+  val fields: collection.mutable.Map[Int, Any], 
+  val fieldPtrs: collection.mutable.Map[Int, StormField[_]]) {
 
   var dirty = false
 
@@ -27,7 +29,10 @@ package ed.mois.core.storm
   def apply(): T = fields(id).asInstanceOf[T]
 
   /** Update the value held in this property, through the setter. */
-  def update(newValue: T) = fields(id) = newValue
+  def update(newValue: T) = {
+    state.changes(id) = newValue
+    fields(id) = newValue
+  }
 
   def reset = { fields(id) = init }
 

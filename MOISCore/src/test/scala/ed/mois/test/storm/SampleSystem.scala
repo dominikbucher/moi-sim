@@ -48,9 +48,20 @@ class SampleModel extends StormModel {
   val contributors = "Dominik Bucher"
 
   lazy val stateVector = SampleState()
-  lazy val processes = Array(
+  ++(() => new P1)
+  ++(() => new P2)
+  ++(() => new P3)
+  ++(() => new P4)
+  ++(() => new P5)
+  ++(() => new P6)
+
+  /*lazy val processes = Array(
     () => new P1, 
-    () => new P2) //, new P3, new P4, new P5, new P6)
+    () => new P2, 
+    () => new P3, 
+    () => new P4, 
+    () => new P5, 
+    () => new P6)*/
 
   import stateVector._
   override val observables = List(r0, r1, r2)

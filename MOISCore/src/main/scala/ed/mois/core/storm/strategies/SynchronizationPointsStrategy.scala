@@ -54,8 +54,8 @@ class SynchronizationPointsStrategy(maxTime: Double, dt: Double) extends Simulat
 
       //results.foreach(r => println(r.fields))
       for (f <- model.stateVector.fields) {
-        model.stateVector.fields(f._1) = 
-          mash(f._2, results.map(_.state.fields(f._1)).toArray)
+        // model.stateVector.fields(f._1) = 
+        //   mash(f._2, results.map(_.state.fields(f._1)).toArray)
       }
     }
     

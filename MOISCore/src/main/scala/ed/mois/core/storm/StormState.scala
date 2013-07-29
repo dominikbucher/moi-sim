@@ -31,12 +31,17 @@ trait StormState[T <: StormState[T]] {
    * Field names generated from the variable names.
    */
   lazy val fieldNames = Refl.getStormCCFieldNames(this)
+  /**
+   * Map of changes. A change of a variable uniquely defines how to get from
+   * the old state to the new one. 
+   */
+  var changes = collection.mutable.Map.empty[Int, Any]
 
   /**
    * Initializes a new field.
    */
   def field[A](init: A) = {
-    new StormField(init, fields.size, fields, fieldPtrs)
+    new StormField(this, init, fields.size, fields, fieldPtrs)
   }
   
   /**
@@ -52,6 +57,20 @@ trait StormState[T <: StormState[T]] {
       n.fields(f._1) = fields(f._1)
     }
     n
+  }
+
+  /**
+   * Resets the changes by creating a new map.
+   */
+  def resetChanges {
+    changes = collection.mutable.Map.empty[Int, Any]
+  }
+
+  /**
+   * Collects the changes applied to this state. 
+   */
+  def collectChanges = {
+    changes.toMap
   }
   
   /**

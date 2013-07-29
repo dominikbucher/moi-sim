@@ -16,4 +16,4 @@ case class RunSimulation(model: StormModel) extends Message
 /** Evolves system based on a process.evolve method. */
 case class Evolve[T <: StormState[_]](state: T, t: Double, dt: Double) extends Message
 /** Results from a process.evolve method. */
-case class Result[T <: StormState[_]](state: T, t: Double, dt: Double) extends Message
+case class Result[T <: StormState[_]](chgs: List[StormChange], t: Double, dt: Double) extends Message

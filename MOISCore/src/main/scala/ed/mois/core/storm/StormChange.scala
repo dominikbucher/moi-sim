@@ -10,12 +10,24 @@ import scala.util.control.Breaks._
 
 import ed.mois.core.storm._
 
+/**
+ * A change describes the change on a system in a given time interval. 
+ * The origin is the id of the process that requested the change. 
+ */
 case class StormChange(origin: Int, t: Double, dt: Double, chg: Map[Int, Any]) {
-	def tEnd = t + dt
+	val tEnd = t + dt
 }
 
-
+/**
+ * Helper class to handle changes, like intersections, merges, slices. 
+ */
 trait ChangeHelper {
+	/**
+	 * Intersects a list of changes, meaning that changes are linearly applied to the initial
+	 * state by slicing them and integrating them until violations are detected. If any 
+	 * violations happen, the violating time and violating changes are returned so
+	 * the simulator can decide what to do with them. 
+	 */
 	def intersect(init: Map[Int, StormField[_]], chgs: List[StormChange]): Option[Tuple3[Double, Double, List[StormChange]]] = {
 		// Slice up the time frame into interesting parts
 		val sliced = slices(chgs)

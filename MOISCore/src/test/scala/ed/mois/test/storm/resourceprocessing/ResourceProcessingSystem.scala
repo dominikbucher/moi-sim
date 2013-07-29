@@ -25,7 +25,7 @@ object ResourceProcessingSystemRunner extends App {
   // Define a new simulator (we use the storm simulator here)
   val sim = new StormSim {
     // Override the default simulation strategy to use a smash strategy with debug output
-    override val simulationStrategy = () => new SmashStrategy(8.0, 0.01) {override val debug = false}
+    override val simulationStrategy = () => new SynchronizationPointsStrategy(8.0, 0.01) {override val debug = false}
     // Specify the model, in this case the bollenbach model defined below
     val model = new ResourceProcessingModel(0.5)
   }
@@ -95,10 +95,16 @@ class ResourceProcessingModel(iSr: Double) extends StormModel {
   // "() => new Process" as this specifies a creator function that is able
   // to instantiate new processes on the fly. This is because processes
   // run many times in a distributed manner
-  lazy val processes: Array[() => StormProcess[ResourceProcessingState]] = Array(
+  ++(() => new Metabolism)
+  ++(() => new ResourceDispProc)
+  ++(() => new ResourceDispProtTranslation)
+  /*lazy val processes: Array[() => StormProcess[ResourceProcessingState]] = Array(
+    // It is a little inconvenient having to write () => ... {override val id = ...}
+    // Maybe write a macro that allows to just write new Metabolism
+    // Problems might be if the modeler wants to use abstract types for his processes
     () => new Metabolism,
     () => new ResourceDispProc,
-    () => new ResourceDispProtTranslation)
+    () => new ResourceDispProtTranslation)*/
 
   // Some meta-data
   val title = "Resource Processing Model Based on the Bollenbach Model"

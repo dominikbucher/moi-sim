@@ -47,7 +47,7 @@ class SmashStrategy(maxTime: Double, dt: Double) extends SimulationStrategy with
       val results = processes.map(_._evolve(model.stateVector.dupl, time, dt))
       // Merge all fields
       for (f <- model.stateVector.fields) {
-        model.stateVector.fields(f._1) = mash(f._2, results.map(_.fields(f._1)).toArray)
+        model.stateVector.fields(f._1) = mash(f._2, results.filter(r => r.head.chg.contains(f._1)).map(r => r.head.chg(f._1)))
       }
     }
     
