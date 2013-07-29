@@ -1,11 +1,12 @@
 /*
  * Contains an implementation of the system by Tobias Bollenbach running on the storm simulator.
+ * The system is extended to provide some resource disposal mechanism that is analyzed.
  *
  * Authors: 
  * - Dominik Bucher, ETH Zurich, Github: dominikbucher
  */
 
-package ed.mois.test.storm.bollenbach
+package ed.mois.test.storm.resourceprocessing
 
 import akka.actor._
 
@@ -17,76 +18,127 @@ import ed.mois.core.storm._
 import ed.mois.core.storm.strategies._
 import ed.mois.core.util.plot.s4gnuplot.Gnuplot
 
-object BollenbachSystemRunner extends App {
+/**
+ * The runner is just an object that contains a main method that runs the model. 
+ */
+object ResourceProcessingSystemRunner extends App {
+  // Define a new simulator (we use the storm simulator here)
   val sim = new StormSim {
+    // Override the default simulation strategy to use a smash strategy with debug output
     override val simulationStrategy = () => new SmashStrategy(8.0, 0.01) {override val debug = false}
-    val model = new BollenbachModel(0.5)
+    // Specify the model, in this case the bollenbach model defined below
+    val model = new ResourceProcessingModel(0.5)
   }
 
+  // Run the simulation and store the results
   val results = sim.runSim
+  // As everything is asynchronous, wait for the simulation to finish before
+  // shutting down application (this is actually not needed, but it's somewhat nicer
+  // when starting from the console as the console waits until everything is finished)
   Await.result(results, 60 seconds)
 }
 
-case class BollenbachState extends StormState[BollenbachState] {
+
+case class ResourceProcessingState extends StormState[ResourceProcessingState] {
+  // Shortcut to constants
   import Constants._
+  // Fields are specified by the creator function "field(initial value)".
+  // Additional stuff like restrictions can just be put after it. The 
+  // field automatically gets the name of the field variable. Thus the
+  // field variable should be unique (field name is only used for output
+  // generation and not for any calculations).
+  /** Amount of protein */
   var p = field(_p) >= 0.0
+  /** DNA */
   var c = field(_c) >= 0.0
+  /** Ribosomes */
   var r = field(_r) >= 0.0
+  /** Resource (energy, ATP) */
   var a = field(_a) >= 0.0
 
+  /** Real ribosomes (as above is measured in number of proteins) */
   var r_real = field(0.0)
+  /** Some scaling of a to fit plots nicer (remember, a is arbitrary) */
   var a_real = field(0.0) // scaled version of a (as a is arbitrary anyways)
+
+  /** External resource */
+  var ew = field(50.0) >= 0.0
+  /** "Better" resource (is transformed from external resource by cell) */
+  var bw = field(0.0) >= 0.0
+  /** Resource-disposal protein */
+  var p_w = field(0.0) >= 0.0
+  /** Transcription factor that measures A */
+  var tf_a = field(0.0) >= 0.0
+  /** Transcription factor that measures external resource */
+  var tf_ew = field(0.0) >= 0.0
 }
 
 /**
- * The Bollenbach system implements the simple mathematical model
- * used by Bollenbach et al. to simulate cell behavior.
+ * The Resource Disposal system implements the simple mathematical model
+ * used by Bollenbach et al. to simulate cell behavior. In addition
+ * there are components that handle "cleaning" of resource into some
+ * sort of useful resource. 
  */
-class BollenbachModel(iSr: Double) extends StormModel {
-  type StateType = BollenbachState
+class ResourceProcessingModel(iSr: Double) extends StormModel {
+  // State type has to be set to the state associated with this model
+  // This allows for static typechecking of all field accesses
+  type StateType = ResourceProcessingState
 
+  // Import some stuff to make access easier (instead of "Constants.A"
+  // just write "A")
   import Constants._
   import Functions._
 
-  lazy val stateVector = BollenbachState()
-  lazy val processes: Array[() => StormProcess[BollenbachState]] = Array(
-    () => new Metabolism)
+  // Initialize the state vector
+  lazy val stateVector = ResourceProcessingState()
+  // Initialize the processes working on the state. This is of the form
+  // "() => new Process" as this specifies a creator function that is able
+  // to instantiate new processes on the fly. This is because processes
+  // run many times in a distributed manner
+  lazy val processes: Array[() => StormProcess[ResourceProcessingState]] = Array(
+    () => new Metabolism,
+    () => new ResourceDispProc,
+    () => new ResourceDispProtTranslation)
 
-  val title = "Bollenbach Ribosome Inhibitor Model"
-  val desc = "The model used in the paper 'Nonoptimal Microbial Response to Antibiotics Underlies Suppressive Drug Interactions."
-  val authors = "Tobias Bollenbach"
-  val contributors = "Dominik Bucher"
+  // Some meta-data
+  val title = "Resource Processing Model Based on the Bollenbach Model"
+  val desc = "An extended version of the model used in the paper 'Nonoptimal Microbial Response to Antibiotics Underlies Suppressive Drug Interactions."
+  val authors = "Tobias Bollenbach, Hristiana Pashkuleva, Dominik Bucher, Vincent Danos"
+  val contributors = "Hristiana Pashkuleva, Dominik Bucher, Vincent Danos"
 
+  // Specify ovservables that are plotted right after the simulation ends
   override val observables = {
     import stateVector._
-    List(p, c, r_real, a_real)
+    List(a_real, ew, bw, p_w)
   }
 
-  def calcDependencies(state: BollenbachState) = {
+  // Use this function to update state (internal dependencies). The function
+  // will be called whenever there is a change in state. 
+  def calcDependencies(state: ResourceProcessingState) = {
     import state._
+
+    tf_a() = K_TFa * a()
+    tf_ew() = K_TFew * ew()
+
     r_real() = r() / pr
     a_real() = a() * 40.0
   }
 
-  class Metabolism extends StormProcess[BollenbachState] {
+  // Definition of a process, in this case metabolism, which is responsible
+  // for metabolic functions of the cell
+  class Metabolism extends StormProcess[ResourceProcessingState] {
     def name = "Metabolism"
-    def evolve(state: BollenbachState, t: Double, dt: Double) = {
+    // The evolve method is the most important one, as it specifies what the
+    // process is doing with the state
+    def evolve(state: ResourceProcessingState, t: Double, dt: Double) = {
+      // Import the state, again for shorter access of state variables
       import state._
 
+      // Do any calculations and state changes you wish
       val sr = Nrrn * No *  sr0 * f_fres(a(), V) //iSr // Nrrn * No * math.min(sr0 /*opt??*/ , sr0 * f_fres(a(), f_V(r(), p())))
       val sp = (1.0 - eta) * kp0 * f_fres(a(), V) * rho * r() // f_spec_sp(a(), r(), p(), sr)
       val sc = Nf * 1.0 / (2.0 * f_tauC(a(), r(), p()))
       val sa = _va
-      // val sr = Nrrn * f_No(a(), r(), p(), g()) *  sr0 * f_fres(a(), f_V(r(), p())) //iSr // Nrrn * No * math.min(sr0 /*opt??*/ , sr0 * f_fres(a(), f_V(r(), p())))
-      // val sp = (1.0 - f_eta(r(), p())) * kp0 * f_fres(a(), f_V(r(), p())) * rho * r() // f_spec_sp(a(), r(), p(), sr)
-      // val sc = f_Nf(a(), r(), p(), g()) * 1.0 / (2.0 * f_tauC(a(), r(), p()))
-      // val sa = va
-
-//      println(s"$t: $sr, $sp, $sc, $sa")
-//      state.print
-//      println
-
-      //g() = f_spec_g(sp, a(), r(), p(), g())
 
       p() += (sp - _g * p()) * dt
       c() += (sc - _g * c()) * dt
@@ -94,8 +146,34 @@ class BollenbachModel(iSr: Double) extends StormModel {
       a() += (sa - (_g + kdeg) * a() - (epsP * sp + epsR * sr + epsC * sc)) * dt
     }
   }
+
+  class ResourceDispProc extends StormProcess[ResourceProcessingState] {
+    def name = "ResourceProcessing"
+    def evolve(state: ResourceProcessingState, t: Double, dt: Double) = {
+      import state._
+
+      val v_ew = v_maxew * (p_w() * ew()) / (K_ew + ew())
+      ew() -= v_ew * dt
+      bw() += v_ew * dt
+    }
+  }
+
+  class ResourceDispProtTranslation extends StormProcess[ResourceProcessingState] {
+    def name = "ResourceProcessing Protein Translation"
+    def evolve(state: ResourceProcessingState, t: Double, dt: Double) = {
+      import state._
+
+      val c_wdp = u0 + u1 * (tf_ew() + tf_a()) / (K_wdp + tf_ew() + tf_a())
+      val v_wdp = c_wdp * rho_maxtr / (3 * n_wdp) * a() / (theta_wdp + a())
+      //println(s"c_wdp: $c_wdp, v_wdp: $v_wdp")
+
+      p_w() += (v_wdp - _g * p_w()) * dt
+      a() -= v_wdp / 160.0
+    }
+  }
 }
 
+// An object specifying some constants
 object Constants {
   val kdeg = 0.12 // h^-1; Resource degradation rate
   val epsP = 8.1 * 0.0000001 // Resources consumed to make one protein
@@ -133,8 +211,20 @@ object Constants {
   // val _sp = po * _g * No
   val eta = Functions.f_eta(_r, _p) //pr * _sr / (_sp + pr * _sr) // 0.11 // Ribosomal protein fraction (0 < eta < 1)
   println(s"tauC: $tauC, tauD: $tauD, Nf: $Nf, No: $No, V: $V, eta: $eta")
+
+  val K_TFa = 0.1 // 0.0001
+  val K_TFew = 0.1 // 0.0001
+  val u0 = 0.001 * 3600 / 100
+  val u1 = 0.1 * 3600 / 100
+  val K_wdp = 0.01 * 3600
+  val rho_maxtr = 85.0 * 3600
+  val n_wdp = 300.0
+  val theta_wdp = 1260.0 / 50.0
+  val v_maxew = 12.1
+  val K_ew = 100.0
 }
 
+// An object specifying some functions
 object Functions {
   import Constants._
 
@@ -162,8 +252,10 @@ object Functions {
   //  numericalApprox(g => sp / (po * g) - math.pow(math.E, g * (f_tauD(a, r, p) + f_tauC(a, r, p))))
   //}
 
+
   /**
-   * Some stupid numerical approximation of functions.
+   * Some stupid numerical approximation of functions. Used by the bollenbach model. Not sure 
+   * if correct approach tough. 
    *
    * Function is
    * f(x) = ... = 0

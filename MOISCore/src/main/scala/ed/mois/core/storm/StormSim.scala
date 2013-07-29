@@ -72,10 +72,14 @@ abstract class StormSim {
         println(s"""Simulation '${model.title}' took ${time.toDouble / 1000} seconds and resulted in ${endSim.size} data vectors of size ${endSim.head._2.fields.size}.""")
 
         // Logging
-        loggingStrategy.writeDataHeader(model.stateVector.fieldNames.map(_._2).toArray)
-        endSim.foreach{ es =>
-          loggingStrategy.writeDataPoints(es._1, es._2.fields.map(_._2).toArray)
-        }
+        // if (!endSim.isEmpty)
+        //   loggingStrategy.writeDataHeader(endSim.head._2.fields.map(f => model.stateVector.fieldNames(f._1)).toArray)
+        // endSim.foreach{ es =>
+        //   loggingStrategy.writeStormDataPoints(es)
+        //   //loggingStrategy.writeDataPoints(es._1, es._2.fields.map(_._2).toArray)
+        // }
+
+        println("Finished logging to disk, starting Gnuplot.")
 
         // Observables
         val observables = model.observables

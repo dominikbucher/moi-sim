@@ -8,6 +8,7 @@
 package ed.mois.core.util
 
 import scalax.io._
+import ed.mois.core.storm._
 
 class DataToFileWriter {
   val clearOutput = Resource.fromOutputStream(new java.io.FileOutputStream("data.dat"))
@@ -19,5 +20,8 @@ class DataToFileWriter {
   }
   def writeDataPoints(t0: Double, dps: Array[Any]) {
     output.write(t0 + " " + dps.mkString(" ") + "\n")
+  }
+  def writeStormDataPoints(p: Tuple2[Double, StormState[_]]) {
+  	output.write(p._1 + " " + p._2.fields.map(_._2).mkString(" ") + "\n")
   }
 }
