@@ -19,7 +19,7 @@ import ed.mois.core.util.plot.s4gnuplot.Gnuplot
 
 object BollenbachSystemRunner extends App {
   val sim = new StormSim {
-    override val simulationStrategy = () => new SmashStrategy(8.0, 0.01) {override val debug = false}
+    override val simulationStrategy = () => new SynchronizationPointsStrategy(8.0, 0.01) {override val debug = false}
     val model = new BollenbachModel(0.5)
   }
 

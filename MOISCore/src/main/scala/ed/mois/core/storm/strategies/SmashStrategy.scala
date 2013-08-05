@@ -64,7 +64,7 @@ class SmashStrategy(maxTime: Double, dt: Double) extends SimulationStrategy with
    */
   def mash(init: Any, newS: Array[Any]): Any = {
     init match {
-      case d: Double => newS.foldLeft(d)((b, t) => b + (t.asInstanceOf[Double] - d))
+      case d: Double => newS.foldLeft(d)((b, t) => b + t.asInstanceOf[Double])
       case o => {
         val chgs = newS.filter(!_.equals(o))
         if (chgs.length > 1) {

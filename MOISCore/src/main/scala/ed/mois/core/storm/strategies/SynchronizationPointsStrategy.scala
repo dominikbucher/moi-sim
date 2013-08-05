@@ -59,13 +59,15 @@ class SynchronizationPointsStrategy(maxTime: Double, dt: Double) extends Simulat
 
     val results = Await.result(interResults, 60 seconds)
 
-    results.foreach(r => r.chgs.foreach(c => println(s"P ${c.origin}: ${c.chg}")))
-    val violators = intersect(model.stateVector, model.stateVector.fieldPtrs, results.flatMap(_.chgs) ::: chgs)
+    //results.foreach(r => r.chgs.foreach(c => println(s"P ${c.origin}: ${c.chg}")))
+    val nChgs = results.flatMap(_.chgs) ::: chgs
+    val violators = intersect(model.stateVector, model.stateVector.fieldPtrs, nChgs, stepTime, stepDt)
     if (violators.isDefined) {
       val violIds = violators.get._3.map(_.origin)
-      println(s"Violators are: $violIds; Trying to reduce time step to: ${stepDt / 2.0}, at $stepTime")
-      simStep(processes, violIds, results.flatMap(r => r.chgs.filter(c => !violIds.contains(c.origin))), model, stepTime, stepDt / 2.0)
-      simStep(processes, violIds, results.flatMap(r => r.chgs.filter(c => !violIds.contains(c.origin))), model, stepTime + stepDt / 2.0, stepDt / 2.0)
+      //println(s"Violators are: $violIds; Trying to reduce time step to: ${stepDt / 2.0}, at $stepTime")
+      //println(s"sending changes along: ${results.flatMap(r => r.chgs.filter(c => !violIds.contains(c.origin)))}")
+      simStep(processes, violIds, nChgs.filter(c => !violIds.contains(c.origin)), model, stepTime, stepDt / 2.0)
+      simStep(processes, violIds, nChgs.filter(c => !violIds.contains(c.origin)), model, stepTime + stepDt / 2.0, stepDt / 2.0)
     }
   }
 }

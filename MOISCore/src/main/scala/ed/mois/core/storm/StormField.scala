@@ -30,7 +30,15 @@ package ed.mois.core.storm
 
   /** Update the value held in this property, through the setter. */
   def update(newValue: T) = {
-    state.changes(id) = newValue
+    init match {
+      case d: Double => {
+        val prevChg = if (state.changes.contains(id)) state.changes(id).asInstanceOf[Double] else 0.0
+        state.changes(id) = prevChg + newValue.asInstanceOf[Double] - fields(id).asInstanceOf[Double]
+      }
+      case a: Any => {
+        state.changes(id) = newValue
+      }
+    }
     fields(id) = newValue
   }
 
@@ -38,10 +46,10 @@ package ed.mois.core.storm
 
   override def toString = fields(id).toString
 
-  def merge(chg: Any, dt: Double): Boolean = {
+  def merge(chg: Any, chgUnit: Double, dt: Double): Boolean = {
     init match {
       case d: Double => {
-        fields(id) = fields(id).asInstanceOf[Double] + (chg.asInstanceOf[Double] - fields(id).asInstanceOf[Double]) * dt
+        fields(id) = fields(id).asInstanceOf[Double] + chg.asInstanceOf[Double] * dt / chgUnit
         if (geq.isDefined && geq.get.asInstanceOf[Double] > fields(id).asInstanceOf[Double]) return false
         if (leq.isDefined && leq.get.asInstanceOf[Double] < fields(id).asInstanceOf[Double]) return false
         return true

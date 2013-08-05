@@ -28,25 +28,30 @@ trait ChangeHelper {
 	 * violations happen, the violating time and violating changes are returned so
 	 * the simulator can decide what to do with them. 
 	 */
-	def intersect(state: StormState[_ <: StormState[_]], init: collection.mutable.Map[Int, StormField[_]], chgs: List[StormChange]): Option[Tuple3[Double, Double, List[StormChange]]] = {
+	def intersect(state: StormState[_ <: StormState[_]], init: collection.mutable.Map[Int, StormField[_]], chgs: List[StormChange], t: Double, dt: Double): 
+		Option[Tuple3[Double, Double, List[StormChange]]] = {
+
 		// Slice up the time frame into interesting parts
 		val sliced = slices(chgs)
 		// Create an empty var to store violators in any time slice
 		var violators: Option[List[StormChange]] = None
 		// Rush through slices and merge all the changes
 		for (s <- sliced) {
-			// Reset dirty fields
-			init.foreach {i => i._2.dirty = false}
-			// Store state to be able to revert in case of violations
-			val stateCpy = state.dupl
-			// Slices have the form ((t_start, t_end), changes)
-			violators = tryMerge(init, s._2, s._1._1, s._1._2)
-			// If there is an error in time slice s, exit intersect function and return
-			// a tuple containing (errorSliceTStart, errorSliceTEnd, InvolvedChanges)
-			if (violators.isDefined) {
-				// Reset state
-				state.fields.foreach(f => state.fields(f._1) = stateCpy.fields(f._1))
-				return Some(s._1._1, s._1._2, violators.get)
+			// Only consider slices within time window
+			if (s._1._1 >= t && s._1._2 <= t + dt) {
+				// Reset dirty fields
+				init.foreach {i => i._2.dirty = false}
+				// Store state to be able to revert in case of violations
+				val stateCpy = state.dupl
+				// Slices have the form ((t_start, t_end), changes)
+				violators = tryMerge(init, s._2, s._1._1, s._1._2)
+				// If there is an error in time slice s, exit intersect function and return
+				// a tuple containing (errorSliceTStart, errorSliceTEnd, InvolvedChanges)
+				if (violators.isDefined) {
+					// Reset state
+					state.fields.foreach(f => state.fields(f._1) = stateCpy.fields(f._1))
+					return Some(s._1._1, s._1._2, violators.get)
+				}
 			}
 		}
 		// If the whole intersection went ok, return None, indicating there are no errors
@@ -65,8 +70,10 @@ trait ChangeHelper {
     	// For every change and every field, merge this into the init vector
     	for { chg <- chgs
     		fieldChg <- chg.chg } {
+    			//val s = s"Merging ${fieldChg._1}: ${fieldChg._2} into ${init(fieldChg._1)} ($t, ${chg.dt}, ${tEnd - t})"
     			// The merge function returns false if the merge failed -> add the id to violated fields in that case
-    			if (!init(fieldChg._1).merge(fieldChg._2, tEnd - t)) violatedFields = fieldChg._1 :: violatedFields
+    			if (!init(fieldChg._1).merge(fieldChg._2, chg.dt, tEnd - t)) violatedFields = fieldChg._1 :: violatedFields
+    			//println(s + s", yields ${init(fieldChg._1)}")
     			// Add the change to the involved list
 				addToListMap(involved, fieldChg._1, chg)
     		}
@@ -92,7 +99,9 @@ trait ChangeHelper {
 			val tps = timePoints.filter(tp => chg.t <= tp(0) && tp(0) < chg.tEnd)
 			// And add the change to all tuples of interesting time points
 			tps.foreach(tp => addToListMap(m, (tp(0), tp(1)), chg))
-		}
+		}    	
+		//println(s"Slicing: $chgs, timePoints: $timePoints")
+
 
 		TreeMap(m.toArray:_*)
 	}

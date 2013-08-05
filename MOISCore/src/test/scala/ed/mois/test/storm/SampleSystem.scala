@@ -17,7 +17,7 @@ import ed.mois.core.storm._
 
 object SampleSimRunner extends App {
   val sim = new StormSim {
-    override val simulationStrategy = () => new SynchronizationPointsStrategy(50.0, 1.0) {override val debug = true}
+    override val simulationStrategy = () => new SynchronizationPointsStrategy(50.0, 25.0) {override val debug = true}
     val model = new SampleModel
   }
 
