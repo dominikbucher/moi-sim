@@ -28,17 +28,24 @@ trait ChangeHelper {
 	 * violations happen, the violating time and violating changes are returned so
 	 * the simulator can decide what to do with them. 
 	 */
-	def intersect(init: Map[Int, StormField[_]], chgs: List[StormChange]): Option[Tuple3[Double, Double, List[StormChange]]] = {
+	def intersect(state: StormState[_ <: StormState[_]], init: collection.mutable.Map[Int, StormField[_]], chgs: List[StormChange]): Option[Tuple3[Double, Double, List[StormChange]]] = {
 		// Slice up the time frame into interesting parts
 		val sliced = slices(chgs)
 		// Create an empty var to store violators in any time slice
 		var violators: Option[List[StormChange]] = None
 		// Rush through slices and merge all the changes
 		for (s <- sliced) {
+			// Reset dirty fields
+			init.foreach {i => i._2.dirty = false}
+			// Store state to be able to revert in case of violations
+			val stateCpy = state.dupl
+			// Slices have the form ((t_start, t_end), changes)
 			violators = tryMerge(init, s._2, s._1._1, s._1._2)
 			// If there is an error in time slice s, exit intersect function and return
 			// a tuple containing (errorSliceTStart, errorSliceTEnd, InvolvedChanges)
 			if (violators.isDefined) {
+				// Reset state
+				state.fields.foreach(f => state.fields(f._1) = stateCpy.fields(f._1))
 				return Some(s._1._1, s._1._2, violators.get)
 			}
 		}
@@ -50,7 +57,7 @@ trait ChangeHelper {
 	 * Tries to merge a set of changes into the state denoted as init. Returns a list of violators
 	 * if the merge fails. 
 	 */
-	def tryMerge(init: Map[Int, StormField[_]], chgs: List[StormChange], t: Double, tEnd: Double): Option[List[StormChange]] = {
+	def tryMerge(init: collection.mutable.Map[Int, StormField[_]], chgs: List[StormChange], t: Double, tEnd: Double): Option[List[StormChange]] = {
 		// For each field there is a number of involved changes, denoted by this map (id) -> InvolvedChanges
     	val involved = collection.mutable.Map.empty[Int, List[StormChange]]
     	// All the ids of fields that were violated in this merge

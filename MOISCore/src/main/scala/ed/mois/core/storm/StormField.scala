@@ -41,7 +41,7 @@ package ed.mois.core.storm
   def merge(chg: Any, dt: Double): Boolean = {
     init match {
       case d: Double => {
-        fields(id) = fields(id).asInstanceOf[Double] + dt * chg.asInstanceOf[Double]
+        fields(id) = fields(id).asInstanceOf[Double] + (chg.asInstanceOf[Double] - fields(id).asInstanceOf[Double]) * dt
         if (geq.isDefined && geq.get.asInstanceOf[Double] > fields(id).asInstanceOf[Double]) return false
         if (leq.isDefined && leq.get.asInstanceOf[Double] < fields(id).asInstanceOf[Double]) return false
         return true
