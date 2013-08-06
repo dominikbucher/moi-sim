@@ -28,6 +28,47 @@ trait ChangeHelper {
 	 * violations happen, the violating time and violating changes are returned so
 	 * the simulator can decide what to do with them. 
 	 */
+	def intersectAndStore[T <: StormState[T]](m: collection.mutable.Map[Double, T], state: T, 
+		init: collection.mutable.Map[Int, StormField[_]], chgs: List[StormChange], t: Double, dt: Double): 
+
+		Option[Tuple3[Double, Double, List[StormChange]]] = {
+
+		// Slice up the time frame into interesting parts
+		val sliced = slices(chgs)
+		//println(s"Slices are: ${sliced.keys}, made from changes: $chgs")
+		// Create an empty var to store violators in any time slice
+		var violators: Option[List[StormChange]] = None
+		// Rush through slices and merge all the changes
+		for (s <- sliced) {
+			// Only consider slices within time window
+			if (s._1._1 >= t && s._1._2 <= t + dt) {
+				// Reset dirty fields
+				init.foreach {i => i._2.dirty = false}
+				// Store state to be able to revert in case of violations
+				val stateCpy = state.dupl
+				// Slices have the form ((t_start, t_end), changes)
+				violators = tryMerge(init, s._2, s._1._1, s._1._2)
+				// If there is an error in time slice s, exit intersect function and return
+				// a tuple containing (errorSliceTStart, errorSliceTEnd, InvolvedChanges)
+				if (violators.isDefined) {
+					// Reset state
+					state.fields.foreach(f => state.fields(f._1) = stateCpy.fields(f._1))
+					return Some(s._1._1, s._1._2, violators.get)
+				}
+				//println("storing: " + s._1._2)
+				m += (s._1._2 -> state)
+			}
+		}
+		// If the whole intersection went ok, return None, indicating there are no errors
+		return None
+	}
+
+	/**
+	 * Intersects a list of changes, meaning that changes are linearly applied to the initial
+	 * state by slicing them and integrating them until violations are detected. If any 
+	 * violations happen, the violating time and violating changes are returned so
+	 * the simulator can decide what to do with them. 
+	 */
 	def intersect(state: StormState[_ <: StormState[_]], init: collection.mutable.Map[Int, StormField[_]], chgs: List[StormChange], t: Double, dt: Double): 
 		Option[Tuple3[Double, Double, List[StormChange]]] = {
 

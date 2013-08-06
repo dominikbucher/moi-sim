@@ -19,9 +19,9 @@ class IndepTimeScaleStrategy(maxTime: Double, dt: Double) extends SimulationStra
   def simulate(model: StormModel): TreeMap[Double, StormState[_]] = {
     // Create processes (model.processes provides creator functions)
     val processes = model.processes.map(p => p())
-    val tNext = Array.fill(processes.length)(0.0)
     val tCurr = Array.fill(processes.length)(0.0)
-    val tPrev = Array.fill(processes.length)(dt)
+    val tPrev = Array.fill(processes.length)(0.0)
+    val tNext = Array.fill(processes.length)(dt)
     val pDt = Array.fill(processes.length)(dt)
     // Initialize result map
     var m = collection.mutable.Map.empty[Double, model.StateType]
@@ -31,7 +31,13 @@ class IndepTimeScaleStrategy(maxTime: Double, dt: Double) extends SimulationStra
     
     // Step through whole simulation
     var t = 0.0
+    var stopper = 0
     while (t < maxTime) {
+      stopper += 1
+      println("tNext: " + tNext.mkString("[ ", ", ", " ]"))
+      println("tCurr: " + tCurr.mkString("[ ", ", ", " ]"))
+      println("tPrev: " + tPrev.mkString("[ ", ", ", " ]"))
+      println("pDt:   " +   pDt.mkString("[ ", ", ", " ]"))
       // Calculate internal model dependencies
       model.calcDependencies(model.stateVector)
       // Add to result vector
@@ -40,25 +46,31 @@ class IndepTimeScaleStrategy(maxTime: Double, dt: Double) extends SimulationStra
 
       // Get index of minimal next time step
       val i = tNext.zipWithIndex.minBy(_._1)._2
+      //println(s"Calculated i: $i")
       // Let this one process produce its change
-      val change = processes(i)._evolve(m(tCurr(i)).dupl, t, pDt(i))
+      val change = processes(i)._evolve(m(tCurr(i)).dupl, tCurr(i), pDt(i))
       // Zip all the results and check for violations
       changes = change ::: changes
       val violators = intersect(model.stateVector, model.stateVector.fieldPtrs, changes, t, pDt(i))
       if (violators.isDefined) {
         // Adjust current process' time step (up to next violation point / 2.0)
-        pDt(i) = (violators.get._1 - tCurr(i)) / 2.0
+        pDt(i) = (violators.get._1 + (violators.get._2 - violators.get._1) / 2.0 - tCurr(i)) / 2.0
+        tNext(i) = tCurr(i) + pDt(i)
         // Adjust all other processes' time step. Get ids first
         val violProcIds = violators.get._3.map(_.origin).distinct.filter(_ != i)
+        println("Violating! Mainly " + violProcIds.mkString("(", ", ", ")") + " plus i=" + i)
         // And adjust all dt's, tCurr's, ...
         violProcIds.foreach { pid => 
           pDt(pid) = tCurr(i) - tPrev(pid) + pDt(i)
           tCurr(pid) = tPrev(pid)
           tNext(pid) = tPrev(pid) + pDt(pid)
         }
+        // Remove all changes of violating processes
+        changes = changes.filterNot(c => violProcIds.contains(c.origin) | c.origin == i)
       } else {
         // If there were no violations, integrate all newly found changes and overwrite state history
-        m = merge(m, changes, t, pDt(i))
+        println(s"Trying to merge: ${tCurr(i)} -> ${tNext(i) - tCurr(i)}")
+        m = merge(m, changes, tCurr(i), tNext(i) - tCurr(i))
         // Adjust i's times and the global time
         tPrev(i) = tCurr(i)
         tCurr(i) = tNext(i)
@@ -66,13 +78,18 @@ class IndepTimeScaleStrategy(maxTime: Double, dt: Double) extends SimulationStra
         t = tCurr.min
         changes = changes.filter(c => c.tEnd > t)
       }
+      println(s"keys at $t are: " + m.keys.toList.sorted.mkString(", "))
+      if (stopper > 500) t = maxTime
+      println
     }
 
     def merge(m: collection.mutable.Map[Double, model.StateType], changes: List[StormChange], startTime: Double, dt: Double) = {
-      m.filterKeys(t => t <= startTime)
-      val dupl = m(startTime).dupl
-      intersect(dupl, dupl.fieldPtrs, changes, startTime, dt)
-      m
+      val mm = collection.mutable.Map(m.filterKeys(t => t <= startTime).toSeq: _*)
+      val dupl = mm(startTime).dupl
+      //println(s"keys of mm before are: " + mm.keys.toList.sorted.mkString(", "))
+      intersectAndStore(mm, dupl, dupl.fieldPtrs, changes, startTime, dt)
+      //println(s"keys of mm after are: " + mm.keys.toList.sorted.mkString(", "))
+      mm
     }
     
     TreeMap(m.toMap.toArray:_*)
