@@ -32,17 +32,19 @@ class IndepTimeScaleStrategy(maxTime: Double, dt: Double) extends SimulationStra
     // Step through whole simulation
     var t = 0.0
     var stopper = 0
+    // Add to result vector
+    m += (t -> model.stateVector.dupl)
+    if (debug) println(printStates(t, model.stateVector, 6))
+
     while (t < maxTime) {
       stopper += 1
-      println("tNext: " + tNext.mkString("[ ", ", ", " ]"))
-      println("tCurr: " + tCurr.mkString("[ ", ", ", " ]"))
-      println("tPrev: " + tPrev.mkString("[ ", ", ", " ]"))
-      println("pDt:   " +   pDt.mkString("[ ", ", ", " ]"))
+      // if (stopper > 982){
+      // println("tNext: " + tNext.mkString("[ ", ", ", " ]"))
+      // println("tCurr: " + tCurr.mkString("[ ", ", ", " ]"))
+      // println("tPrev: " + tPrev.mkString("[ ", ", ", " ]"))
+      // println("pDt:   " +   pDt.mkString("[ ", ", ", " ]"))}
       // Calculate internal model dependencies
       model.calcDependencies(model.stateVector)
-      // Add to result vector
-      m += (t -> model.stateVector.dupl)
-      if (debug) println(printStates(t.toDouble * dt, model.stateVector, 6))
 
       // Get index of minimal next time step
       val i = tNext.zipWithIndex.minBy(_._1)._2
@@ -51,10 +53,11 @@ class IndepTimeScaleStrategy(maxTime: Double, dt: Double) extends SimulationStra
       val change = processes(i)._evolve(m(tCurr(i)).dupl, tCurr(i), pDt(i))
       // Zip all the results and check for violations
       changes = change ::: changes
-      val violators = intersect(model.stateVector, model.stateVector.fieldPtrs, changes, t, pDt(i))
+      val dupl = m(tCurr(i)).dupl
+      val violators = intersect(dupl, dupl.fieldPtrs, changes, t, pDt(i))
       if (violators.isDefined) {
         // Adjust current process' time step (up to next violation point / 2.0)
-        pDt(i) = (violators.get._1 + (violators.get._2 - violators.get._1) / 2.0 - tCurr(i)) / 2.0
+        pDt(i) = (violators.get._1 + (violators.get._2 - violators.get._1) / 2.0 - tCurr(i)) // 2.0
         tNext(i) = tCurr(i) + pDt(i)
         // Adjust all other processes' time step. Get ids first
         val violProcIds = violators.get._3.map(_.origin).distinct.filter(_ != i)
@@ -69,26 +72,35 @@ class IndepTimeScaleStrategy(maxTime: Double, dt: Double) extends SimulationStra
         changes = changes.filterNot(c => violProcIds.contains(c.origin) | c.origin == i)
       } else {
         // If there were no violations, integrate all newly found changes and overwrite state history
-        println(s"Trying to merge: ${tCurr(i)} -> ${tNext(i) - tCurr(i)}")
+        //m.foreach(x => println(printStates(x._1, x._2, 6)))
+        //println(s"Trying to merge: ${tCurr(i)} -> ${tNext(i) - tCurr(i)}")
         m = merge(m, changes, tCurr(i), tNext(i) - tCurr(i))
         // Adjust i's times and the global time
+        // Try to put pDt(i) back to original dt
+        pDt(i) = math.min(pDt(i) * 2.0, dt)
         tPrev(i) = tCurr(i)
         tCurr(i) = tNext(i)
         tNext(i) = tCurr(i) + pDt(i)
+        // Add to result vector
+        //m += (t -> model.stateVector.dupl)
+        //if (debug) println(printStates(t, model.stateVector, 6))
         t = tCurr.min
         changes = changes.filter(c => c.tEnd > t)
       }
-      println(s"keys at $t are: " + m.keys.toList.sorted.mkString(", "))
-      if (stopper > 500) t = maxTime
-      println
+      //println(s"keys at $t are: " + m.keys.toList.sorted.mkString(", "))
+      //m.foreach(x => println(printStates(x._1, x._2, 6)))
+      //println(stopper + ": " + t + ": " + i)
+      if (stopper > 10000) t = maxTime
+      //println
     }
 
     def merge(m: collection.mutable.Map[Double, model.StateType], changes: List[StormChange], startTime: Double, dt: Double) = {
-      val mm = collection.mutable.Map(m.filterKeys(t => t <= startTime).toSeq: _*)
-      val dupl = mm(startTime).dupl
+      val mm = m.filter{case (t, s) => t <= startTime}
+      val dupl = mm(startTime).dupl      
       //println(s"keys of mm before are: " + mm.keys.toList.sorted.mkString(", "))
       intersectAndStore(mm, dupl, dupl.fieldPtrs, changes, startTime, dt)
       //println(s"keys of mm after are: " + mm.keys.toList.sorted.mkString(", "))
+      mm.filter{case (t, s) => t >= startTime}.foreach{case (t, s) => model.calcDependencies(s)}
       mm
     }
     

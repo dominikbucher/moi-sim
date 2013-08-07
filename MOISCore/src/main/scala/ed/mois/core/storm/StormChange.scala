@@ -56,7 +56,7 @@ trait ChangeHelper {
 					return Some(s._1._1, s._1._2, violators.get)
 				}
 				//println("storing: " + s._1._2)
-				m += (s._1._2 -> state)
+				m += (s._1._2 -> state.dupl)
 			}
 		}
 		// If the whole intersection went ok, return None, indicating there are no errors
@@ -120,8 +120,10 @@ trait ChangeHelper {
     		}
 
     	// If there were any violations, gather up all the involved changes and return them
-    	if (violatedFields.length > 0) Some(violatedFields.map(vf => involved(vf)).flatten.distinct)
-    	else None
+    	if (violatedFields.length > 0) {
+    		//println(violatedFields)
+    		Some(violatedFields.map(vf => involved(vf)).flatten.distinct)
+    	} else None
 	}
 
 	/** 
