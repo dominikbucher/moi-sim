@@ -5,7 +5,6 @@
 
 package ed.mois.core.storm.strategies
 
-
 import akka.actor._
 import akka.pattern.ask
 import akka.util.Timeout
