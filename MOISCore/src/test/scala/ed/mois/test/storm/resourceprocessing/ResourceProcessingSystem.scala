@@ -24,10 +24,12 @@ import ed.mois.core.util.plot.s4gnuplot.Gnuplot
 object ResourceProcessingSystemRunner extends App {
   // Define a new simulator (we use the storm simulator here)
   val sim = new StormSim {
-    // Override the default simulation strategy to use a smash strategy with debug output
-    override val simulationStrategy = () => new IndepTimeScaleStrategy(8.0, 0.01) {override val debug = true}
     // Specify the model, in this case the bollenbach model defined below
     val model = new ResourceProcessingModel(0.5)
+    // Override the default simulation strategy to use a smash strategy with debug output
+    override val simulationStrategy = () => new DistrSimPosStepAdaptionStrategy(model, 8.0, 0.01) {
+      override val debug = false
+    }
   }
 
   // Run the simulation and store the results

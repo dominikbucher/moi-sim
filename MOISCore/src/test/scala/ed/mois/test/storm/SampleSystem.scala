@@ -17,8 +17,11 @@ import ed.mois.core.storm._
 
 object SampleSimRunner extends App {
   val sim = new StormSim {
-    override val simulationStrategy = () => new IndepTimeScaleStrategy(50.0, 1.0) {override val debug = true}
     val model = new SampleModel
+    // Override the default simulation strategy to use a smash strategy with debug output
+    override val simulationStrategy = () => new DistrSimPosStepAdaptionStrategy(model, 50.0, 1.0) {
+      override val debug = true
+    }
   }
 
   val results = sim.runSim

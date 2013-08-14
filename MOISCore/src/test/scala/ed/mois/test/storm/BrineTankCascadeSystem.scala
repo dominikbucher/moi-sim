@@ -19,7 +19,8 @@ object BrineTankCascadeSimRunner extends App {
   val sim = new StormSim {
     //override val simulationStrategy = () => new SynchronizationPointsStrategy(50.0, 0.01) {override val debug = true}
     val model = new BrineTankCascadeModel
-    override val simulationStrategy = () => new DistrSimPosStepAdaptionStrategy(model, 50.0, 0.1) {override val debug = true}
+    override val simulationStrategy = () => new DistrSimPosStepAdaptionStrategy(model, 50.0, 0.1) 
+      {override val debug = false}
   }
 
   val results = sim.runSim
