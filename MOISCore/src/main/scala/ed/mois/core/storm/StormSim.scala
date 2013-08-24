@@ -49,7 +49,7 @@ abstract class StormSim {
   val system = ActorSystem("system")
 
   // Implicit timeout for dealing with actors and waiting for their results
-  implicit val timeout = Timeout(60 seconds)
+  implicit val timeout = Timeout(360 seconds)
 
   /**
    * Main function that runs a simulation given the model and strategies.

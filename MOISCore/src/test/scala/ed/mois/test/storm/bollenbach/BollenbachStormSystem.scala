@@ -18,13 +18,24 @@ import ed.mois.core.storm.strategies._
 import ed.mois.core.util.plot.s4gnuplot.Gnuplot
 
 object BollenbachSystemRunner extends App {
-  val sim = new StormSim {
-    override val simulationStrategy = () => new SynchronizationPointsStrategy(8.0, 0.01) {override val debug = false}
-    val model = new BollenbachModel(0.5)
-  }
+  var g_max = 0.0
+  var sr_max = 0.0
+  for (i <- 9000 to 10000) {
+    val sim = new StormSim {
+      override val simulationStrategy = () => new SmashStrategy(16.0, 0.01) {override val debug = false}
+      val model = new BollenbachModel(i)
+    }
 
-  val results = sim.runSim
-  Await.result(results, 60 seconds)
+    val results = sim.runSim
+    val res = Await.result(results, 60 seconds)
+
+    if (res.last._2.asInstanceOf[BollenbachState].g() > g_max) {
+      g_max = res.last._2.asInstanceOf[BollenbachState].g()
+      sr_max = i
+    }
+    //println(s"$i: $g_max")
+  }
+  println(s"g_max: $g_max, sr_max: $sr_max")
 }
 
 case class BollenbachState extends StormState[BollenbachState] {
@@ -33,6 +44,7 @@ case class BollenbachState extends StormState[BollenbachState] {
   var c = field(_c) >= 0.0
   var r = field(_r) >= 0.0
   var a = field(_a) >= 0.0
+  var g = field(_g) 
 
   var r_real = field(0.0)
   var a_real = field(0.0) // scaled version of a (as a is arbitrary anyways)
@@ -49,7 +61,7 @@ class BollenbachModel(iSr: Double) extends StormModel {
   import Functions._
 
   lazy val stateVector = BollenbachState()
-  ++(() => new Metabolism)
+  addProcess(() => new Metabolism)
   // lazy val processes: Array[() => StormProcess[BollenbachState]] = Array(
   //   () => new Metabolism)
 
@@ -60,7 +72,7 @@ class BollenbachModel(iSr: Double) extends StormModel {
 
   override val observables = {
     import stateVector._
-    List(p, c, r_real, a_real)
+    List()
   }
 
   def calcDependencies(state: BollenbachState) = {
@@ -74,25 +86,37 @@ class BollenbachModel(iSr: Double) extends StormModel {
     def evolve(state: BollenbachState, t: Double, dt: Double) = {
       import state._
 
-      val sr = Nrrn * No *  sr0 * f_fres(a(), V) //iSr // Nrrn * No * math.min(sr0 /*opt??*/ , sr0 * f_fres(a(), f_V(r(), p())))
-      val sp = (1.0 - eta) * kp0 * f_fres(a(), V) * rho * r() // f_spec_sp(a(), r(), p(), sr)
-      val sc = Nf * 1.0 / (2.0 * f_tauC(a(), r(), p()))
+      val V = kV * (p() + pr * r())
+      //val eta = (pr*self.sr) / (self.sp + pr*self.sr)
+      val fres = (a() / V) / (Ma + a() / V)
+      val TC =  tauC0 / fres
+      val TD =  tauD0 / fres
+      val No = math.exp(g() * (TC + TD))
+      val Nf = 2 * math.exp(g() * TD) * (-1 + math.exp(g() * TC))
+      //println(s"$fres, $TC, $TD, $No, $Nf")
+
+      val sr = math.min(iSr, sr0 * fres * Nrrn * No)
+      
+      //val sr = Nrrn * No *  sr0 * f_fres(a(), V) //iSr // Nrrn * No * math.min(sr0 /*opt??*/ , sr0 * f_fres(a(), f_V(r(), p())))
+      val sp = kp0 * fres * r() - pr * sr //(1.0 - eta) * kp0 * f_fres(a(), V) * rho * r() // f_spec_sp(a(), r(), p(), sr)
+      val sc = Nf * 1.0 / (2.0 * TC)
       val sa = _va
       // val sr = Nrrn * f_No(a(), r(), p(), g()) *  sr0 * f_fres(a(), f_V(r(), p())) //iSr // Nrrn * No * math.min(sr0 /*opt??*/ , sr0 * f_fres(a(), f_V(r(), p())))
       // val sp = (1.0 - f_eta(r(), p())) * kp0 * f_fres(a(), f_V(r(), p())) * rho * r() // f_spec_sp(a(), r(), p(), sr)
       // val sc = f_Nf(a(), r(), p(), g()) * 1.0 / (2.0 * f_tauC(a(), r(), p()))
       // val sa = va
 
-//      println(s"$t: $sr, $sp, $sc, $sa")
+      //println(s"$t: ${p()}, ${c()}, ${r()}, ${a()}, ${g()}, $sr, $sp, $sc, $sa")
 //      state.print
 //      println
 
       //g() = f_spec_g(sp, a(), r(), p(), g())
+      g() = sp / (No * po)
 
-      p() += (sp - _g * p()) * dt
-      c() += (sc - _g * c()) * dt
-      r() += (sr - _g * r()) * dt
-      a() += (sa - (_g + kdeg) * a() - (epsP * sp + epsR * sr + epsC * sc)) * dt
+      p() += (sp - g() * p()) * dt
+      c() += (sc - g() * c()) * dt
+      r() += (sr - g() * r()) * dt
+      a() += (sa - (g() + kdeg) * a() - (epsP * sp + epsR * sr + epsC * sc)) * dt
     }
   }
 }
@@ -107,40 +131,44 @@ object Constants {
   val po = 9.9 * 100000.0 // Protein per replication origin
   val pr = 20.7 // Amount of protein per ribosome
   val kV = 3.73 * 0.0000001 // um^3; Cell volume per protein
-  val kp0 = 0.059 // s^-1; Maximal rate of protein synthesis per ribosome
-  val sr0 = 72.0 // min; Maximal rate of ribosome synthesis per rrn operon
-  val tauC0 = 33.0 // min; Minimal replication time of chromosome
-  val tauD0 = 16.0 // min; Minimal delay before cell division
+  val kp0  = 0.059  * 3600
+  val sr0 = 72.0 * 60.0
+  val tauC0 = 33 / 60.0
+  val tauD0 = 16 / 60.0
+  //val kp0 = 0.059 // s^-1; Maximal rate of protein synthesis per ribosome
+  // val sr0 = 72.0 // min; Maximal rate of ribosome synthesis per rrn operon
+  // val tauC0 = 33.0 / 60.0// min; Minimal replication time of chromosome
+  // val tauD0 = 16.0 // min; Minimal delay before cell division
   val Nrrn = 7.0 // 1.0 to 7.0; Number of rrn operons per chromosome
   val rho = 1.0 // 0.0 to 1.0; Fraction of functional ribosomes (< 1.0 with antibiotic)
   val delta = 1.0 // 0.0 to 1.0; Relative change of DNA synthesis rate (< 1.0 with antibiotic)
 
   // Dependent properties ------------------------------------------------------------
   // Initial numbers
-  val _g = 0.69 // h^-1; Cell division rate, growth rate
-  val _r = 1.0 //1.35 * 10000.0 // # ribosomes per cell
-  val _p = 40.0 //2.4 * 1000000.0 // # proteins per cell
-  val _c = 1.8 // Genome equivalents of DNA per cell
+  val _g = 1.0 //0.69 // h^-1; Cell division rate, growth rate
+  val _r = 1.35 * 10000.0 // # ribosomes per cell
+  val _p = 2.4 * 1000000.0 // # proteins per cell
+  val _c = 3.0 //1.8 // Genome equivalents of DNA per cell
   val _a = 1.0 // # of resources per cell (called atp here); arbitrarily chosen
-  
+
   val kp = 0.038 // s^-1; Rate of protein synthesis per ribosome
-  val tauC = Functions.f_tauC(_a, _r, _p) // 50.0 // min; Replication time of chromosome
-  val tauD = Functions.f_tauD(_a, _r, _p) // 25.0 // min; Delay before cell division
-  val Nf = Functions.f_Nf(_a, _r, _p, _g) // 2.1 // # of replication forks
-  val No = Functions.f_No(_a, _r, _p, _g) // 2.4 // # of replication origins
-  val V = Functions.f_V(_r, _p) // 1.0 // um^3; Cell volume
+  //val tauC = Functions.f_tauC(_a, _r, _p) // 50.0 // min; Replication time of chromosome
+  //val tauD = Functions.f_tauD(_a, _r, _p) // 25.0 // min; Delay before cell division
+  //val Nf = Functions.f_Nf(_a, _r, _p, _g) // 2.1 // # of replication forks
+  //val No = Functions.f_No(_a, _r, _p, _g) // 2.4 // # of replication origins
+  //val V = Functions.f_V(_r, _p) // 1.0 // um^3; Cell volume
   val _va = 2.42 // h^-1; Resource influx
   // val _sr = Nrrn *No *  sr0 * Functions.f_fres(_a, V)
   // val _sp = po * _g * No
-  val eta = Functions.f_eta(_r, _p) //pr * _sr / (_sp + pr * _sr) // 0.11 // Ribosomal protein fraction (0 < eta < 1)
-  println(s"tauC: $tauC, tauD: $tauD, Nf: $Nf, No: $No, V: $V, eta: $eta")
+  //val eta = Functions.f_eta(sr, sp) //pr * _sr / (_sp + pr * _sr) // 0.11 // Ribosomal protein fraction (0 < eta < 1)
+  //println(s"tauC: $tauC, tauD: $tauD, Nf: $Nf, No: $No, V: $V, eta: $eta")
 }
 
 object Functions {
   import Constants._
 
   def f_V(r: Double, p: Double) = kV * (p + pr * r)
-  def f_eta(r: Double, p: Double) = pr * r / (p + pr * r)
+  def f_eta(sr: Double, sp: Double) = pr * sr / (sp + pr * sr)
   //def f_eta(sr: Double, sp: Double) = pr * sr / (sp + pr * sr)
   def f_fres(a: Double, V: Double) = (a / V) / (Ma + a / V)
   def f_No(a: Double, r: Double, p: Double, g: Double) = math.pow(math.E,
