@@ -16,7 +16,8 @@ object BuildSettings {
     version := "1.0.0",
     scalacOptions ++= Seq(),
     scalaVersion := "2.10.2",
-    resolvers += "Typesafe repository" at "http://repo.typesafe.com/typesafe/releases/"
+    resolvers += "Typesafe repository" at "http://repo.typesafe.com/typesafe/releases/",
+    resolvers += "Sonatype snapshots repository" at "https://oss.sonatype.org/content/repositories/snapshots/"
   )
 }
 
@@ -32,15 +33,15 @@ object MyBuild extends Build {
       resolvers += Classpaths.typesafeReleases,
       libraryDependencies ++= Seq(
         "org.scalatra" %% "scalatra" % ScalatraVersion,
-		    "org.scalatra" %% "scalatra-atmosphere" % "2.2.1",
-		    "org.scalatra" %% "scalatra-json" % "2.2.1",
+		    "org.scalatra" %% "scalatra-atmosphere" % ScalatraVersion,
+		    "org.scalatra" %% "scalatra-json" % ScalatraVersion,
 		    "org.json4s"   %% "json4s-jackson" % "3.2.4",
 		    "org.eclipse.jetty" % "jetty-websocket" % "8.1.10.v20130312" % "container",
+        "org.eclipse.jetty" % "jetty-webapp" % "8.1.10.v20130312" % "container",
+        "org.eclipse.jetty.orbit" % "javax.servlet" % "3.0.0.v201112011016" % "container;provided;test" artifacts (Artifact("javax.servlet", "jar", "jar")),
         "org.scalatra" %% "scalatra-scalate" % ScalatraVersion,
         "org.scalatra" %% "scalatra-specs2" % ScalatraVersion % "test",
-        "ch.qos.logback" % "logback-classic" % "1.0.11" % "runtime",
-        "org.eclipse.jetty" % "jetty-webapp" % "8.1.8.v20121106" % "container",
-        "org.eclipse.jetty.orbit" % "javax.servlet" % "3.0.0.v201112011016" % "container;provided;test" artifacts (Artifact("javax.servlet", "jar", "jar"))
+        "ch.qos.logback" % "logback-classic" % "1.0.11" % "runtime"
       ),
       scalateTemplateConfig in Compile <<= (sourceDirectory in Compile){ base =>
         Seq(
@@ -55,8 +56,14 @@ object MyBuild extends Build {
         )
       }
     )
-  ) dependsOn(MOISCore)
+  ) dependsOn(MOISCore, MOISModels)
 
+  lazy val MOISModels: Project = Project(
+    "MOISModels",
+    file("MOISModels"),
+    settings = buildSettings
+  ) dependsOn(MOISCore)
+  
   lazy val MOISCore: Project = Project(
     "MOISCore",
     file("MOISCore"),
@@ -66,7 +73,7 @@ object MyBuild extends Build {
 		"com.github.scala-incubator.io" %% "scala-io-core" % "0.4.2",
 		"com.github.scala-incubator.io" %% "scala-io-file" % "0.4.2",
 		// Akka distributed stuff
-		"com.typesafe.akka" %% "akka-actor" % "2.2.0-RC1",
+		"com.typesafe.akka" %% "akka-actor" % "2.1.0",
 		// Matrices in Java
 		"com.googlecode.efficient-java-matrix-library" % "ejml" % "0.22",
 		"org.scalatest" % "scalatest_2.10" % "2.0.M5b" % "test",

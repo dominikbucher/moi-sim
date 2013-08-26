@@ -1,5 +1,5 @@
 <%@ val body:String %>
-<%@ val simulators:List[ed.mois.changemodel.simulator.SimulationDescriptor] %>
+<%@ val simulators:List[ed.mois.web.SimulationDescriptor] %>
 <!DOCTYPE html>
 <html>
   <head>

@@ -5,9 +5,11 @@
 
 package ed.mois.web
 
-import scala.concurrent.Await
+import scala.concurrent._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.DurationInt
+import scala.util._
+
 import org.json4s.DefaultFormats
 import org.json4s.Formats
 import org.json4s.jackson.Serialization.write
@@ -24,15 +26,12 @@ import org.scalatra.atmosphere.TextMessage
 import org.scalatra.json.JValueResult
 import org.scalatra.json.JacksonJsonSupport
 import org.scalatra.scalate.ScalateSupport
-import akka.actor.Actor
-import akka.actor.ActorLogging
-import akka.actor.ActorRef
-import akka.actor.Props
-import akka.actor.actorRef2Scala
+import akka.actor._
 import akka.pattern.ask
 import akka.util.Timeout
-import ed.mois.core.comm._
-import ed.mois.core.sim._
+import ed.mois.models.storm._
+import ed.mois.core.storm._
+import ed.mois.core.storm.strategies._
 
 class IMSControlServlet extends IMSControlStack
   with ScalateSupport with JValueResult
@@ -42,8 +41,53 @@ class IMSControlServlet extends IMSControlStack
   implicit protected val jsonFormats: Formats = DefaultFormats
   implicit val timeout = Timeout(60 seconds)
 
-  val system = Simulator.system
-  val simulators: List[SimulationDescriptor] = List()
+  //val system = ActorSystem("webInterfaceSystem")
+  val simulators: List[SimulationDescriptor] = List(
+    SimulationDescriptor("Brine Tank System", "A classical example of an ODE system.", () => {
+      new StormSim {
+        //override val simulationStrategy = () => new SynchronizationPointsStrategy(50.0, 0.01) {override val debug = true}
+        val model = new BrineTankCascadeModel
+        override val simulationStrategy = () => new DistrSimPosStepAdaptionStrategy(model, 50.0, 0.1) 
+          {override val debug = false}
+        override val printGnu = false
+      }
+    }),
+    SimulationDescriptor("Recycled Brine Tank Cascade System", "A classical example of an ODE system, extended with a cascade.", () => {
+      new StormSim {
+        //override val simulationStrategy = () => new SynchronizationPointsStrategy(50.0, 0.01) {override val debug = true}
+        val model = new RecycledBrineTankCascadeModel
+        override val simulationStrategy = () => new DistrSimPosStepAdaptionStrategy(model, 50.0, 0.1) 
+          {override val debug = false}
+        override val printGnu = false
+      }
+    }),
+    SimulationDescriptor("Sample ODE System", "A sample ODE system.", () => {
+      new StormSim {
+        //override val simulationStrategy = () => new SynchronizationPointsStrategy(50.0, 0.01) {override val debug = true}
+        val model = new SampleODEModel
+        override val simulationStrategy = () => new DistrSimPosStepAdaptionStrategy(model, 50.0, 0.1) 
+          {override val debug = false}
+        override val printGnu = false
+      }
+    }),
+    SimulationDescriptor("Bollenbach System", "The Bollenbach whole cell model.", () => {
+      new StormSim {
+        //override val simulationStrategy = () => new SynchronizationPointsStrategy(50.0, 0.01) {override val debug = true}
+        val model = new bollenbach.BollenbachModel(9769.0)
+        override val simulationStrategy = () => new DistrSimPosStepAdaptionStrategy(model, 50.0, 0.1) 
+          {override val debug = false}
+        override val printGnu = false
+      }
+    }),
+    SimulationDescriptor("Resource Processing System", "A resource processing system based on the Bollenbach whole cell model.", () => {
+      new StormSim {
+        //override val simulationStrategy = () => new SynchronizationPointsStrategy(50.0, 0.01) {override val debug = true}
+        val model = new resourceprocessing.ResourceProcessingModel(9769.0)
+        override val simulationStrategy = () => new DistrSimPosStepAdaptionStrategy(model, 50.0, 0.1) 
+          {override val debug = false}
+        override val printGnu = false
+      }
+    }))
 
   get("/") {
     contentType = "text/html"
@@ -51,55 +95,74 @@ class IMSControlServlet extends IMSControlStack
   }
 
   atmosphere("/imscontrol") {
-    new AtmosphereClient with UiListener {
-      var simulator: ActorRef = _
-      val uiUpdater = system.actorOf(Props(new UiUpdater(this)))
+    new AtmosphereClient {//with UiListener {
+      var simulator: StormSim = _
+      var simInstantiator: () => StormSim = _
+      //val uiUpdater = system.actorOf(Props(new UiUpdater(this)))
 
       def receive = {
-        case Connected =>
+        case Connected => 
         case Disconnected(disconnector, Some(error)) =>
         case Error(Some(error)) =>
         case TextMessage(text) => text match {
-          case s: String => simulator ! RegForProperty(uiUpdater, s.split('.')(0), s.split('.')(1), true)
+          case s: String => //simulator ! RegForProperty(uiUpdater, s.split('.')(0), s.split('.')(1), true)
         }
         case JsonMessage(json) => {
           val t = (json \ "type").extract[String]
           t match {
             case "RequestSimInfo" => {
               val name = (json \ "simName").extract[String]
-              simulator = simulators.filter(_.title == name).map(_.instantiate).head
-              val simGraphFuture = (simulator ? RegForData(uiUpdater, true)).mapTo[SimInfo]
-              simGraphFuture onFailure {
-                case e: Exception => println(e)
-              }
-              Await.ready(simGraphFuture, timeout.duration)
-              val simInfo = simGraphFuture.value.get.get
+
+              simInstantiator = simulators.filter(_.title == name).map(_.instantiate).head
+              simulator = simInstantiator()
+              val simInfo = SimInfo(
+                name, 
+                simulators.filter(_.title == name).head.desc, 
+                simulator.model.stateVector.fieldNames.map(n => (n._2, None)).toMap, 
+                SimGraph(
+                  List(StateEntry("State Vector", simulator.model.stateVector.fieldNames.map(n => PropertyId("State Vector", n._2, n._1)).toSet)), 
+                  simulator.model.processes.map(create => {
+                    val p = create()
+                    ProcessEntry(p.name, simulator.model.stateVector.fieldNames.map(n => PropertyId("State Vector", n._2, n._1)).toSet, 
+                      simulator.model.stateVector.fieldNames.map(n => PropertyId("State Vector", n._2, n._1)).toSet)
+                  }).toList
+                )
+              )
 
               send(write(simInfo))
             }
-            case "StartSimulation" => simulator ! RunSimulation()
-            case "ResetSimulation" => simulator ! ResetSimulation()
-            case "UpdateParam" => simulator ! Param((json \ "param").extract[String], (json \ "value").extract[String])
-            case "RegisterDataListener" => {
+            case "StartSimulation" => {
+              val resultFuture = simulator.runSim
+              resultFuture onComplete {
+                case Success(result) => {
+                  val dps = for { r <- result
+                                  v <- r._2.fields } yield DataPoint("State Vector", r._2.fieldNames(v._1), r._1, v._2)
+                  send(write(DataPoints(dps.toList)))
+                  send(write("Simulation Done"))
+                }
+                case Failure(t) => 
+              }
+
+            }
+            case "ResetSimulation" => simulator = simInstantiator()
+            case "UpdateParam" => //simulator ! Param((json \ "param").extract[String], (json \ "value").extract[String])
+            case "RegisterDataListener" => /*{
               val s = (json \ "dataPoint").extract[String]
               simulator ! RegForProperty(uiUpdater, s.split('.')(0), s.split('.')(1), true)
-            }
-            case "UnRegisterDataListener" => {
+            }*/
+            case "UnRegisterDataListener" => /*{
               val s = (json \ "dataPoint").extract[String]
               simulator ! RegForProperty(uiUpdater, s.split('.')(0), s.split('.')(1), false)
-            }
+            }*/
             case _ =>
           }
           //broadcast(json)
         }
       }
 
-      def updateUi(json: String) = {
-        send(json)
-      }
-      def simDone {
-        send(write("Simulation Done"))
-      }
+      // def updateUi(json: String) = {
+      //   send(json)
+      // }
     }
   }
 
@@ -118,18 +181,36 @@ class IMSControlServlet extends IMSControlStack
   }
 }
 
-trait UiListener {
-  def updateUi(json: String)
-  def simDone()
-}
+// trait UiListener {
+//   def updateUi(json: String)
+//   def simDone()
+// }
 
-class UiUpdater(val ui: UiListener) extends Actor with ActorLogging {
-  implicit protected val jsonFormats: Formats = DefaultFormats
+// class UiUpdater(val ui: UiListener) extends Actor with ActorLogging {
+//   implicit protected val jsonFormats: Formats = DefaultFormats
 
-  def receive = {
-    case dp @ DataPoint(state, name, time, value) => ui.updateUi(write(dp))
-    case DataPoints(dps) => dps.foreach(dp => ui.updateUi(write(dp)))
-    case SimulationDone() => ui.simDone
-    case _ => log.warning("Received unknown message in UiUpdater")
+//   def receive = {
+//     //case dp @ DataPoint(state, name, time, value) => ui.updateUi(write(dp))
+//     //case DataPoints(dps) => dps.foreach(dp => ui.updateUi(write(dp)))
+//     //case SimulationDone() => ui.simDone
+//     case _ => log.warning("Received unknown message in UiUpdater")
+//   }
+// }
+
+case class SimulationDescriptor(val title: String, val desc: String, val instantiate: () => StormSim)
+case class SimInfo(title: String, desc: String, params: Map[String, Any], graph: SimGraph)
+case class SimGraph(states: List[StateEntry], processes: List[ProcessEntry]) {
+  override def toString = {
+    "Simulation Graph: \n  States:\n    " + states.mkString("\n    ") + "\n  Processes:\n    " + processes.mkString("\n    ")
   }
 }
+case class StateEntry(name: String, props: Set[PropertyId])
+case class ProcessEntry(name: String, writeProps: Set[PropertyId],
+  readProps: Set[PropertyId])
+case class PropertyId(state: String, name: String, var id: Int)
+
+/** Sends a single data point. */
+case class DataPoint(state: String, prop: String, time: Double, value: Any)
+
+/** Sends multiple data points. */
+case class DataPoints(dataPoints: List[DataPoint])

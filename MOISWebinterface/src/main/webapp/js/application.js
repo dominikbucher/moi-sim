@@ -172,7 +172,7 @@ $(function() {
 	var params = null;
 
 	var request = {
-		url : "/wholecellcontrol",
+		url : "/imscontrol",
 		contentType : "application/json",
 		logLevel : 'debug',
 		transport : transport,
@@ -206,6 +206,10 @@ $(function() {
 			updateSimInfo(json);
 		} else if (json.state && json.prop) {
 			updateData(json);
+		} else if (json.dataPoints) {
+			for (p in json.dataPoints) {
+				updateData(json.dataPoints[p]);
+			}
 		} else if (json == "Simulation Done") {
 			simDone();
 		} 
@@ -272,9 +276,11 @@ $(function() {
 	}
 
 	function updateData(data) {
-		dataPoints[data.state + "." + data.prop].push([
-				parseFloat(data.time), parseFloat(data.value) ]);
-		redraw(false);
+		if (dataPoints[data.state + "." + data.prop]) {
+			dataPoints[data.state + "." + data.prop].push([
+					parseFloat(data.time), parseFloat(data.value) ]);
+			redraw(false);
+		}
 	}
 
 	function updateSimInfo(data) {

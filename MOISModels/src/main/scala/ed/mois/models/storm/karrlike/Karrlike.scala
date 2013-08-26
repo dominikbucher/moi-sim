@@ -5,7 +5,7 @@
  * - Dominik Bucher, ETH Zurich, Github: dominikbucher
  */
 
-package ed.mois.test.storm.karrlike
+package ed.mois.models.storm.karrlike
 
 import ed.mois.core.storm.strategies._
 import ed.mois.core.storm._

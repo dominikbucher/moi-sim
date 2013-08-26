@@ -5,7 +5,7 @@
  * - Dominik Bucher, ETH Zurich, Github: dominikbucher
  */
 
-package ed.mois.test.storm.bollenbach
+package ed.mois.models.storm.bollenbach
 
 import akka.actor._
 

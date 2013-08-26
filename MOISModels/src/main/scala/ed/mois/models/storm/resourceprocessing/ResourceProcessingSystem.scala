@@ -6,7 +6,7 @@
  * - Dominik Bucher, ETH Zurich, Github: dominikbucher
  */
 
-package ed.mois.test.storm.resourceprocessing
+package ed.mois.models.storm.resourceprocessing
 
 import akka.actor._
 

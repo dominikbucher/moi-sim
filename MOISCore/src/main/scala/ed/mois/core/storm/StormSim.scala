@@ -41,6 +41,11 @@ abstract class StormSim {
   val loggingStrategy = new DataToFileWriter
 
   /**
+   * Tells the simulator if gnu plot should be called in the end to plot observables. 
+   */
+  val printGnu = false
+
+  /**
    * Overwrite to define the model to be simulated.
    */
   val model: StormModel
@@ -83,7 +88,7 @@ abstract class StormSim {
 
         // Observables
         val observables = model.observables
-        if (!observables.isEmpty) {
+        if (!observables.isEmpty && printGnu) {
           val gnuData = endSim.map(es => Seq(es._1) ++
             observables.map(o => es._2.fields(o.id).asInstanceOf[Double])).toSeq
 

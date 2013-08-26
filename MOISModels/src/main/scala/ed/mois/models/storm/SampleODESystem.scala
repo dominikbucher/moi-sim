@@ -5,7 +5,7 @@
  * - Dominik Bucher, ETH Zurich, Github: dominikbucher
  */
 
-package ed.mois.test.storm
+package ed.mois.models.storm
 
 import akka.actor._
 

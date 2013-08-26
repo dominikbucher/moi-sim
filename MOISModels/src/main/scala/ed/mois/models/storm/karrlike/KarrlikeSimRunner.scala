@@ -1,4 +1,4 @@
-package ed.mois.test.storm.karrlike
+package ed.mois.models.storm.karrlike
 
 import akka.actor._
 
