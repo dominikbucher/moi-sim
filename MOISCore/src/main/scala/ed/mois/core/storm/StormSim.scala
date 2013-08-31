@@ -43,7 +43,7 @@ abstract class StormSim {
   /**
    * Tells the simulator if gnu plot should be called in the end to plot observables. 
    */
-  val printGnu = false
+  val printGnu = true
 
   /**
    * Overwrite to define the model to be simulated.
@@ -77,12 +77,9 @@ abstract class StormSim {
         println(s"""Simulation '${model.title}' took ${time.toDouble / 1000} seconds and resulted in ${endSim.size} data vectors of size ${endSim.head._2.fields.size}.""")
 
         // Logging
-        // if (!endSim.isEmpty)
-        //   loggingStrategy.writeDataHeader(endSim.head._2.fields.map(f => model.stateVector.fieldNames(f._1)).toArray)
-        // endSim.foreach{ es =>
-        //   loggingStrategy.writeStormDataPoints(es)
-        //   //loggingStrategy.writeDataPoints(es._1, es._2.fields.map(_._2).toArray)
-        // }
+        if (!endSim.isEmpty) {
+          loggingStrategy.writeStormData(model, endSim)
+        }
 
         println("Finished logging to disk, starting Gnuplot.")
 

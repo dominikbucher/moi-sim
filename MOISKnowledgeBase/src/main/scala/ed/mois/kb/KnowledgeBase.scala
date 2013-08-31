@@ -11,6 +11,9 @@ import org.squeryl.PrimitiveTypeMode._
 import org.squeryl._
 import org.squeryl.KeyedEntity
 
+/**
+ * Scala adapter for the Karr Whole Cell Knowledgebase (SQL version).
+ */
 object KnowledgeBase extends Schema {
 
   val userprofile = table[Public_UserProfile]

@@ -40,14 +40,6 @@ class DistrSimPosStepAdaptionStrategy(val model: StormModel, maxTime: Double, dt
   val tPrev = Array.fill(processes.size)(0.0)
   val tNext = Array.fill(processes.size)(dt)
   val pDt = Array.fill(processes.size)(dt)
-  /*pDt(1) = 0.1
-  pDt(2) = 0.2
-  pDt(3) = 0.3
-  pDt(4) = 0.4
-  tNext(1) = 0.1
-  tNext(2) = 0.2
-  tNext(3) = 0.3
-  tNext(4) = 0.4*/
 
   // Set of running processes, and where in time they are
   var running = collection.mutable.Set.empty[Tuple3[Int, Double, Double]]
@@ -164,16 +156,6 @@ class DistrSimPosStepAdaptionStrategy(val model: StormModel, maxTime: Double, dt
             }
           }
 
-          // Calculate next time step (if process isn't already running)
-          /*if (tCurr(i) < maxTime && !isRunning(i)) {
-            running += Tuple3(i, tCurr(i), pDt(i))
-            processes(i) ! Evolve(m(tCurr(i)).dupl, tCurr(i), pDt(i))
-          } else if (running.size == 0) {
-            // If nothing is running, just stop everything
-            orig.foreach(_ ! TreeMap(m.toMap.toArray:_*))
-            context.stop(self)
-          }*/
-
           t = tCurr.min
           if (t > maxTime) {
             running = collection.mutable.Set.empty[Tuple3[Int, Double, Double]]
@@ -201,7 +183,6 @@ class DistrSimPosStepAdaptionStrategy(val model: StormModel, maxTime: Double, dt
         mm.filter{case (t, s) => t >= startTime}.foreach{case (t, s) => model.calcDependencies(s)}
         //println(TreeMap(mm.toMap.toArray:_*))
         //println
-        //println
         mm
       }
 
@@ -214,7 +195,7 @@ class DistrSimPosStepAdaptionStrategy(val model: StormModel, maxTime: Double, dt
 
   def simulate(mod: StormModel): TreeMap[Double, StormState[_]] = {
     processes.foreach{ p =>
-      println(s"${p._1} calculated with 0.0 -> ${pDt(p._1)}")
+      //println(s"${p._1} calculated with 0.0 -> ${pDt(p._1)}")
       running += (Tuple3(p._1, 0.0, pDt(p._1)))
       p._2 ! Evolve(model.stateVector.dupl, 0.0, pDt(p._1))
     }

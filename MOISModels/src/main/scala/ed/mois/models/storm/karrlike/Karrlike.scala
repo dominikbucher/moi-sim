@@ -10,11 +10,12 @@ package ed.mois.models.storm.karrlike
 import ed.mois.core.storm.strategies._
 import ed.mois.core.storm._
 
+/**
+ * Model that describes an (empty) large model, comparable to the Karr model (though the Karr model 
+ * uses even more variables, lots of which are not really necessary though).
+ */
 class KarrlikeModel extends StormModel {
   type StateType = KarrlikeState
-
-  def REACT_CONST = 0.00003
-  def PROB_CONST = 0.3
 
   val title = "A Karrlike System Modifying Several Things"
   val desc = "A Karrlike System to show properties of the simulator."

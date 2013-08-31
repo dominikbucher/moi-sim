@@ -10,6 +10,9 @@ import org.squeryl._
 import org.squeryl.adapters.MySQLAdapter
 import org.squeryl.PrimitiveTypeMode._
 
+/**
+ * Scala adapter for the Karr Whole Cell Knowledgebase (SQL version).
+ */
 object LoadKnowledgeBase {
   import KnowledgeBase._
 

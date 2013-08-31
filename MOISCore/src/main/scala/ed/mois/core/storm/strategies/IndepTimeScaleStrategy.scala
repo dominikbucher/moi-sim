@@ -31,18 +31,15 @@ class IndepTimeScaleStrategy(maxTime: Double, dt: Double) extends SimulationStra
     
     // Step through whole simulation
     var t = 0.0
-    var stopper = 0
     // Add to result vector
     m += (t -> model.stateVector.dupl)
     if (debug) println(printStates(t, model.stateVector, 6))
 
     while (t < maxTime) {
-      stopper += 1
-      // if (stopper > 982){
       // println("tNext: " + tNext.mkString("[ ", ", ", " ]"))
       // println("tCurr: " + tCurr.mkString("[ ", ", ", " ]"))
       // println("tPrev: " + tPrev.mkString("[ ", ", ", " ]"))
-      // println("pDt:   " +   pDt.mkString("[ ", ", ", " ]"))}
+      // println("pDt:   " +   pDt.mkString("[ ", ", ", " ]"))
       // Calculate internal model dependencies
       model.calcDependencies(model.stateVector)
 
@@ -61,7 +58,7 @@ class IndepTimeScaleStrategy(maxTime: Double, dt: Double) extends SimulationStra
         tNext(i) = tCurr(i) + pDt(i)
         // Adjust all other processes' time step. Get ids first
         val violProcIds = violators.get._3.map(_.origin).distinct.filter(_ != i)
-        println("Violating! Mainly " + violProcIds.mkString("(", ", ", ")") + " plus i=" + i)
+        // println("Violating! Mainly " + violProcIds.mkString("(", ", ", ")") + " plus i=" + i)
         // And adjust all dt's, tCurr's, ...
         violProcIds.foreach { pid => 
           pDt(pid) = tCurr(i) - tPrev(pid) + pDt(i)
@@ -89,8 +86,6 @@ class IndepTimeScaleStrategy(maxTime: Double, dt: Double) extends SimulationStra
       }
       //println(s"keys at $t are: " + m.keys.toList.sorted.mkString(", "))
       //m.foreach(x => println(printStates(x._1, x._2, 6)))
-      //println(stopper + ": " + t + ": " + i)
-      if (stopper > 10000) t = maxTime
       //println
     }
 

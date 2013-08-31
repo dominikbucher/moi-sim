@@ -20,7 +20,7 @@ object SampleSimRunner extends App {
     val model = new SampleModel
     // Override the default simulation strategy to use a smash strategy with debug output
     override val simulationStrategy = () => new DistrSimPosStepAdaptionStrategy(model, 50.0, 1.0) {
-      override val debug = true
+      override val debug = false
     }
   }
 
@@ -39,6 +39,10 @@ case class SampleState extends StormState[SampleState] {
   override def print = s"r0: $r0, r1: $r1, r2: $r2, r3: $r3, r4: $r4, r5: $r5"
 }
 
+/**
+ * An example system that does random and differential stuff on the state. 
+ * Used primarily for debugging and showing how strategies work.
+ */
 class SampleModel extends StormModel {
   type StateType = SampleState
 

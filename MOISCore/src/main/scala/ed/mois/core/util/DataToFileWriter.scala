@@ -9,11 +9,14 @@ package ed.mois.core.util
 
 import scalax.io._
 import ed.mois.core.storm._
+import scala.collection.immutable.TreeMap
 
 class DataToFileWriter {
-  val clearOutput = Resource.fromOutputStream(new java.io.FileOutputStream("data.dat"))
+  val fileName = "data.dat"
+
+  val clearOutput = Resource.fromOutputStream(new java.io.FileOutputStream(fileName))
   clearOutput.write("")
-  val output = Resource.fromFile("data.dat")
+  val output: Output = Resource.fromFile("data.dat")
   
   def writeDataHeader(dh: Array[String]) {
     output.write("t " + dh.mkString(" ") + "\n")
@@ -23,5 +26,19 @@ class DataToFileWriter {
   }
   def writeStormDataPoints(p: Tuple2[Double, StormState[_]]) {
   	output.write(p._1 + " " + p._2.fields.map(_._2).mkString(" ") + "\n")
+  }
+
+  def writeStormData(model: StormModel, d: TreeMap[Double, StormState[_]]) {
+    for {
+      outProcessor <- Resource.fromOutputStream(new java.io.FileOutputStream(fileName)).outputProcessor
+      out = outProcessor.asOutput
+    } {
+      // Write data header
+      out.write("t " + d.head._2.fields.map(f => model.stateVector.fieldNames(f._1)).toArray.mkString(" ") + "\n")
+      // Write data
+      d.foreach{ p =>
+        out.write(p._1 + " " + p._2.fields.map(_._2).mkString(" ") + "\n")
+      }
+    }
   }
 }

@@ -6,6 +6,6 @@
 package ed.mois.kb
 
 object Constants {
-  val USERNAME = "dominik"
-  val PASSWORD = "larix14"
+  val USERNAME = "<replace with own>"
+  val PASSWORD = "<replace with own>"
 }

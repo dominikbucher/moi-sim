@@ -15,6 +15,7 @@ class ScalatraBootstrap extends LifeCycle {
 
   override def init(context: ServletContext) {
     context.setInitParameter("useFileMappedBuffer", "false")
+    // Set to production mode
     //context.initParameters("org.scalatra.environment") = "production"
     context.mount(new IMSControlServlet, "/*")
   }

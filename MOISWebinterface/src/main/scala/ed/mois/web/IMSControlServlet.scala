@@ -41,7 +41,9 @@ class IMSControlServlet extends IMSControlStack
   implicit protected val jsonFormats: Formats = DefaultFormats
   implicit val timeout = Timeout(60 seconds)
 
-  //val system = ActorSystem("webInterfaceSystem")
+  /**
+   * The different simulators available for simulation.
+   */
   val simulators: List[SimulationDescriptor] = List(
     SimulationDescriptor("Brine Tank System", "A classical example of an ODE system.", () => {
       new StormSim {
@@ -95,10 +97,10 @@ class IMSControlServlet extends IMSControlStack
   }
 
   atmosphere("/imscontrol") {
-    new AtmosphereClient {//with UiListener {
+    // Handles the communication via WebSockets
+    new AtmosphereClient {
       var simulator: StormSim = _
       var simInstantiator: () => StormSim = _
-      //val uiUpdater = system.actorOf(Props(new UiUpdater(this)))
 
       def receive = {
         case Connected => 
@@ -159,10 +161,6 @@ class IMSControlServlet extends IMSControlStack
           //broadcast(json)
         }
       }
-
-      // def updateUi(json: String) = {
-      //   send(json)
-      // }
     }
   }
 
@@ -181,22 +179,9 @@ class IMSControlServlet extends IMSControlStack
   }
 }
 
-// trait UiListener {
-//   def updateUi(json: String)
-//   def simDone()
-// }
-
-// class UiUpdater(val ui: UiListener) extends Actor with ActorLogging {
-//   implicit protected val jsonFormats: Formats = DefaultFormats
-
-//   def receive = {
-//     //case dp @ DataPoint(state, name, time, value) => ui.updateUi(write(dp))
-//     //case DataPoints(dps) => dps.foreach(dp => ui.updateUi(write(dp)))
-//     //case SimulationDone() => ui.simDone
-//     case _ => log.warning("Received unknown message in UiUpdater")
-//   }
-// }
-
+/**
+ * Different classes for state graphs and information passing.
+ */
 case class SimulationDescriptor(val title: String, val desc: String, val instantiate: () => StormSim)
 case class SimInfo(title: String, desc: String, params: Map[String, Any], graph: SimGraph)
 case class SimGraph(states: List[StateEntry], processes: List[ProcessEntry]) {

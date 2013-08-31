@@ -24,6 +24,7 @@ object BollenbachSystemRunner extends App {
     val sim = new StormSim {
       override val simulationStrategy = () => new SmashStrategy(16.0, 0.01) {override val debug = false}
       val model = new BollenbachModel(i)
+      override val printGnu = false
     }
 
     val results = sim.runSim
@@ -36,6 +37,14 @@ object BollenbachSystemRunner extends App {
     //println(s"$i: $g_max")
   }
   println(s"g_max: $g_max, sr_max: $sr_max")
+
+  val sim = new StormSim {
+    override val simulationStrategy = () => new SmashStrategy(16.0, 0.01) {override val debug = false}
+    val model = new BollenbachModel(sr_max)
+  }
+
+  val results = sim.runSim
+  val res = Await.result(results, 60 seconds)
 }
 
 case class BollenbachState extends StormState[BollenbachState] {
@@ -72,7 +81,7 @@ class BollenbachModel(iSr: Double) extends StormModel {
 
   override val observables = {
     import stateVector._
-    List()
+    List(p, c, r, a, g)
   }
 
   def calcDependencies(state: BollenbachState) = {

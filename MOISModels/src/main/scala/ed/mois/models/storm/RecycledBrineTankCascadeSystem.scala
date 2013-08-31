@@ -17,7 +17,7 @@ import ed.mois.core.storm._
 
 object RecycledBrineTankCascadeSimRunner extends App {
   val sim = new StormSim {
-    override val simulationStrategy = () => new SynchronizationPointsStrategy(40.0, 0.01) {override val debug = true}
+    override val simulationStrategy = () => new SynchronizationPointsStrategy(40.0, 0.01) {override val debug = false}
     val model = new RecycledBrineTankCascadeModel
   }
 
@@ -33,6 +33,9 @@ case class RecycledBrineTankCascadeState extends StormState[RecycledBrineTankCas
   override def print = s"x1: $x1, x2: $x2, x3: $x3"
 }
 
+/**
+ * A classical ODE system modeling three tanks where water flows from one to another.
+ */
 class RecycledBrineTankCascadeModel extends StormModel {
   type StateType = RecycledBrineTankCascadeState
 

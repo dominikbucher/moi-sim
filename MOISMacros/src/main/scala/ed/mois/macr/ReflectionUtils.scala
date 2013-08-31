@@ -5,6 +5,10 @@
 
 package ed.mois.macr
 
+/**
+ * Some reflection utils to get class constructors / accessors / ...
+ * Method not used as of 2013-08.
+ */
 trait ReflectionUtils {
   import scala.reflect.api.Universe
 

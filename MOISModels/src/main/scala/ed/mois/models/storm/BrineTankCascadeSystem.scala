@@ -35,6 +35,9 @@ case class BrineTankCascadeState extends StormState[BrineTankCascadeState] {
   override def print = s"x1: $x1, x2: $x2, x3: $x3"
 }
 
+/**
+ * A classical ODE system modeling three tanks where water flows from one to another.
+ */
 class BrineTankCascadeModel extends StormModel {
   type StateType = BrineTankCascadeState
 

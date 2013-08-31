@@ -113,6 +113,10 @@ import scala.reflect.internal.Names
 }*/
 
 object ChangeModelMacros extends ReflectionUtils {
+  /** 
+   * Automatically converts a field to a trackable field by adding the corresponding trait.
+   * Method not used as of 2013-08.
+   */
   def trackable[T](value: Any) = macro trackable_impl[T]
 
   def trackable_impl[T: c.WeakTypeTag](c: Context)(value: c.Expr[Any]): c.Expr[T] = {
@@ -132,6 +136,10 @@ object ChangeModelMacros extends ReflectionUtils {
     e
   }
 
+  /**
+   * Sets up necessary messages by analyzing code.
+   * Method not used as of 2013-08.
+   */
   def setUpMessages: PropRefs = macro setUpMessages_impl
 
   def setUpMessages_impl(c: Context) = {
@@ -189,6 +197,10 @@ object ChangeModelMacros extends ReflectionUtils {
 
   //def instantiateSkeleton[T <: t: ClassManifest](stateName: String): T = macro instantiateSkeleton_impl[T]
 
+  /**
+   * Instantiates a state skeleton by changing fields to trackables and more.
+   * Method not used as of 2013-08.
+   */
   def instantiateSkeleton_impl[T: c.WeakTypeTag](c: Context)(stateName: c.Expr[String]): c.Expr[T] = {
     import c.universe._
 

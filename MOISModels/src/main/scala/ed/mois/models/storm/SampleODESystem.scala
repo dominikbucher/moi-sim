@@ -17,7 +17,7 @@ import ed.mois.core.storm._
 
 object SampleODESimRunner extends App {
   val sim = new StormSim {
-    override val simulationStrategy = () => new IndepTimeScaleStrategy(50.0, 1.0) {override val debug = true}
+    override val simulationStrategy = () => new IndepTimeScaleStrategy(50.0, 0.05) {override val debug = false}
     val model = new SampleODEModel
   }
 
@@ -32,6 +32,10 @@ case class SampleODEState extends StormState[SampleODEState] {
   override def print = s"x1: $x1, x2: $x2"
 }
 
+/**
+ * An example system that does random and differential stuff on the state. 
+ * Used primarily for debugging and showing how strategies work.
+ */
 class SampleODEModel extends StormModel {
   type StateType = SampleODEState
 
@@ -44,14 +48,6 @@ class SampleODEModel extends StormModel {
   ++(() => new P1)
   ++(() => new P2)
 
-  /*lazy val processes = Array(
-    () => new P1, 
-    () => new P2, 
-    () => new P3, 
-    () => new P4, 
-    () => new P5, 
-    () => new P6)*/
-
   import stateVector._
   override val observables = List(x1, x2)
   def calcDependencies(st: SampleODEState) = {}
@@ -61,7 +57,7 @@ class SampleODEModel extends StormModel {
     def evolve(state: SampleODEState, t: Double, dt: Double) {
       import state._
 
-      x1() = (4.0 * x1() + 7.0 * x2()) * dt
+      x1() += (-0.3 * x1() - 0.4 * x2()) * dt
     }
   }
 
@@ -70,7 +66,7 @@ class SampleODEModel extends StormModel {
     def evolve(state: SampleODEState, t: Double, dt: Double) {
       import state._
 
-      x2() = (-2.0 * x1() - 5.0 * x2()) * dt
+      x2() += (-0.5 * x1() - 0.8 * x2()) * dt
     }
   }
 }
