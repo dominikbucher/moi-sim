@@ -14,11 +14,11 @@ import scala.collection.immutable.TreeMap
 class DataToFileWriter {
   val fileName = "data.dat"
 
-  val clearOutput = Resource.fromOutputStream(new java.io.FileOutputStream(fileName))
-  clearOutput.write("")
   val output: Output = Resource.fromFile("data.dat")
   
   def writeDataHeader(dh: Array[String]) {
+    val clearOutput = Resource.fromOutputStream(new java.io.FileOutputStream(fileName))
+    clearOutput.write("")
     output.write("t " + dh.mkString(" ") + "\n")
   }
   def writeDataPoints(t0: Double, dps: Array[Any]) {
@@ -28,9 +28,9 @@ class DataToFileWriter {
   	output.write(p._1 + " " + p._2.fields.map(_._2).mkString(" ") + "\n")
   }
 
-  def writeStormData(model: StormModel, d: TreeMap[Double, StormState[_]]) {
+  def writeStormData(fileN: String, model: StormModel, d: TreeMap[Double, StormState[_]]) {
     for {
-      outProcessor <- Resource.fromOutputStream(new java.io.FileOutputStream(fileName)).outputProcessor
+      outProcessor <- Resource.fromOutputStream(new java.io.FileOutputStream(fileN)).outputProcessor
       out = outProcessor.asOutput
     } {
       // Write data header

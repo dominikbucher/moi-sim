@@ -45,6 +45,16 @@ abstract class StormSim {
    */
   val printGnu = true
 
+  /** 
+   * Tells the simulator if data should be written to disk.
+   */
+  val writeData = true
+
+  /**
+   * The filename of the output data file. 
+   */
+  val fileName = "data.dat"
+
   /**
    * Overwrite to define the model to be simulated.
    */
@@ -77,8 +87,8 @@ abstract class StormSim {
         println(s"""Simulation '${model.title}' took ${time.toDouble / 1000} seconds and resulted in ${endSim.size} data vectors of size ${endSim.head._2.fields.size}.""")
 
         // Logging
-        if (!endSim.isEmpty) {
-          loggingStrategy.writeStormData(model, endSim)
+        if (!endSim.isEmpty && writeData) {
+          loggingStrategy.writeStormData(fileName, model, endSim)
         }
 
         println("Finished logging to disk, starting Gnuplot.")

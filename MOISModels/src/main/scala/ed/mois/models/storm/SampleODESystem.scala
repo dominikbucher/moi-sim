@@ -19,6 +19,7 @@ object SampleODESimRunner extends App {
   val sim = new StormSim {
     override val simulationStrategy = () => new IndepTimeScaleStrategy(50.0, 0.05) {override val debug = false}
     val model = new SampleODEModel
+    override val fileName = "sampleODE.dat"
   }
 
   val results = sim.runSim
