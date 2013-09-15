@@ -13,6 +13,7 @@ import scala.concurrent._
 import scala.concurrent.duration._
 
 import ed.mois.core.storm.strategies._
+import ed.mois.core.storm.adapter._
 import ed.mois.core.storm._
 
 object SampleSimRunner extends App {
@@ -24,8 +25,10 @@ object SampleSimRunner extends App {
     }
   }
 
-  val results = sim.runSim
-  Await.result(results, 60 seconds)
+  sim.system.shutdown
+
+  // val results = sim.runSim
+  // Await.result(results, 60 seconds)
 }
 
 case class SampleState extends StormState[SampleState] {
@@ -55,12 +58,16 @@ class SampleModel extends StormModel {
   val contributors = "Dominik Bucher"
 
   lazy val stateVector = SampleState()
-  ++(() => new P1)
-  ++(() => new P2)
-  ++(() => new P3)
-  ++(() => new P4)
-  ++(() => new P5)
-  ++(() => new P6)
+  //++(() => new MatlabP)
+  val mp = new MatlabP
+  mp.test
+  mp.disconnect
+  // ++(() => new P1)
+  // ++(() => new P2)
+  // ++(() => new P3)
+  // ++(() => new P4)
+  // ++(() => new P5)
+  // ++(() => new P6)
 
   /*lazy val processes = Array(
     () => new P1, 
@@ -73,6 +80,12 @@ class SampleModel extends StormModel {
   import stateVector._
   override val observables = List(r0, r1, r2)
   def calcDependencies(st: SampleState) = {}
+
+  class MatlabP extends StormProcess[SampleState] with MatlabAdapter[SampleState] {
+    def name = "MatlabP"
+    val copyPropIds = List(r0, r1)
+    val functionName = "ExampleMatlabFunction"
+  }
 
   class P1 extends StormProcess[SampleState] {
     def name = "P1"
